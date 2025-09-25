@@ -1,23 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Search Results Extractor",
+  "name": "Reddit AI Demand Miner",
   "version": "1.0.0",
-  "description": "Extract Google search results and Reddit posts/comments to CSV",
+  "description": "Scrape Reddit posts, analyze with OpenAI, and aggregate most requested AI tools.",
   "permissions": [
     "activeTab",
     "storage",
     "scripting",
     "downloads",
     "tabs",
-    "contextMenus"
+    "contextMenus",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://www.google.com/*",
-    "https://www.reddit.com/*"
+    "https://www.reddit.com/*",
+    "https://platform.openai.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://www.google.com/search*"],
@@ -30,9 +34,11 @@
       "run_at": "document_end"
     }
   ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Search Results Extractor",
+    "default_title": "Open Reddit AI Demand Miner",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"

@@ -10,8 +10,8 @@
         }
 
         body {
-            width: 400px;
-            min-height: 500px;
+            width: 100%;
+            min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -20,6 +20,9 @@
 
         .container {
             padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Header with Toggle Switcher */
@@ -29,10 +32,11 @@
             padding: 20px;
             text-align: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
         }
 
         .header h1 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
             margin-bottom: 15px;
         }
@@ -44,13 +48,14 @@
             border-radius: 25px;
             padding: 4px;
             margin: 0 auto;
-            width: 280px;
+            width: 100%;
+            max-width: 400px;
             position: relative;
         }
 
         .mode-option {
             flex: 1;
-            padding: 10px 15px;
+            padding: 12px 15px;
             text-align: center;
             cursor: pointer;
             border-radius: 20px;
@@ -99,7 +104,8 @@
         .content-area {
             display: none;
             padding: 20px;
-            min-height: 400px;
+            flex: 1;
+            overflow-y: auto;
         }
 
         .content-area.active {
@@ -291,16 +297,16 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Reddit-specific styles */
-        .reddit-menu {
+        /* Enhanced sidebar-specific styles */
+        .sidebar-section {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             padding: 20px;
-            margin-top: 20px;
+            margin-bottom: 20px;
             backdrop-filter: blur(10px);
         }
 
-        .reddit-menu h3 {
+        .sidebar-section h3 {
             margin: 0 0 15px 0;
             font-size: 16px;
             text-align: center;
@@ -339,11 +345,11 @@
             font-size: 12px;
         }
 
-        .reddit-options {
+        .options {
             margin: 15px 0;
         }
 
-        .reddit-options label {
+        .options label {
             display: block;
             margin: 10px 0;
             font-size: 13px;
@@ -353,18 +359,18 @@
             gap: 8px;
         }
 
-        .reddit-options input[type="checkbox"] {
+        .options input[type="checkbox"] {
             margin: 0;
         }
 
-        .reddit-buttons {
+        .button-group {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin-top: 15px;
         }
 
-        .reddit-progress {
+        .progress-section {
             margin-top: 15px;
             padding: 20px;
             background: rgba(255, 255, 255, 0.1);
@@ -372,7 +378,7 @@
             backdrop-filter: blur(10px);
         }
 
-        .reddit-progress h4 {
+        .progress-section h4 {
             margin: 0 0 15px 0;
             font-size: 14px;
             text-align: center;
@@ -401,7 +407,7 @@
             font-size: 12px;
         }
 
-        .current-url {
+        .current-task {
             font-size: 10px;
             color: rgba(255, 255, 255, 0.8);
             word-break: break-all;
@@ -410,12 +416,85 @@
             overflow-y: auto;
         }
 
+        /* Enhanced AI Analysis Results */
+        .analysis-results {
+            margin-top: 15px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .analysis-results h4 {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .result-card h5 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .result-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .result-list li {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .action-plan {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         .footer {
             margin-top: 20px;
             text-align: center;
             font-size: 11px;
             opacity: 0.7;
             padding: 0 20px 20px;
+            flex-shrink: 0;
+        }
+
+        /* Responsive adjustments for sidebar */
+        @media (max-width: 400px) {
+            .mode-switcher {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .mode-option {
+                padding: 8px 12px;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -453,20 +532,22 @@
                 </div>
             </div>
 
-            <div class="buttons">
-                <button id="extractBtn" class="btn btn-primary">
-                    <div class="mode-icon google-icon"></div>
-                    Extract Current Page Results
-                </button>
-                <button id="exportBtn" class="btn btn-secondary">
-                    Export All to CSV
-                </button>
-                <button id="clearBtn" class="btn btn-danger">
-                    Clear All Data
-                </button>
+            <div class="sidebar-section">
+                <h3>🔍 Google Search Extraction</h3>
+                <div class="buttons">
+                    <button id="extractBtn" class="btn btn-primary">
+                        <div class="mode-icon google-icon"></div>
+                        Extract Current Page Results
+                    </button>
+                    <button id="exportBtn" class="btn btn-secondary">
+                        Export All to CSV
+                    </button>
+                    <button id="clearBtn" class="btn btn-danger">
+                        Clear All Data
+                    </button>
+                </div>
+                <div id="status" class="status"></div>
             </div>
-
-            <div id="status" class="status"></div>
         </div>
 
         <!-- Reddit Extraction Mode -->
@@ -482,8 +563,8 @@
                 </div>
             </div>
 
-            <div class="reddit-menu">
-                <h3>Reddit Extraction</h3>
+            <div class="sidebar-section">
+                <h3>🐹 Reddit Content Extraction</h3>
                 <div class="csv-files">
                     <h4>Select CSV file to extract Reddit data from:</h4>
                     <input type="file" id="csvFileInput" accept=".csv" class="file-input">
@@ -492,7 +573,7 @@
                         <p>Reddit URLs found: <span id="urlCount">0</span></p>
                     </div>
                 </div>
-                <div class="reddit-options">
+                <div class="options">
                     <label>
                         <input type="checkbox" id="closeTabs" checked>
                         Close tabs after extraction (saves resources)
@@ -502,7 +583,7 @@
                         Extract comments
                     </label>
                 </div>
-                <div class="reddit-buttons">
+                <div class="button-group">
                     <button id="startRedditExtraction" class="btn btn-primary">
                         <div class="mode-icon reddit-icon"></div>
                         Start Reddit Extraction
@@ -511,7 +592,7 @@
                 <div id="redditStatus" class="status"></div>
                 
                 <!-- Progress tracking -->
-                <div id="redditProgress" class="reddit-progress" style="display: none;">
+                <div id="redditProgress" class="progress-section" style="display: none;">
                     <h4>Extraction Progress</h4>
                     <div class="progress-bar">
                         <div id="progressFill" class="progress-fill"></div>
@@ -520,7 +601,7 @@
                         <span id="progressText">0 / 0</span>
                         <span id="progressPercent">0%</span>
                     </div>
-                    <div id="currentUrl" class="current-url"></div>
+                    <div id="currentUrl" class="current-task"></div>
                     <button id="stopExtraction" class="btn btn-danger">Stop Extraction</button>
                 </div>
             </div>
@@ -539,13 +620,32 @@
                 </div>
             </div>
 
-            <div class="reddit-menu">
-                <h3>🤖 AI Analysis</h3>
+            <div class="sidebar-section">
+                <h3>🤖 AI Analysis with OpenAI</h3>
                 <p style="margin-bottom: 15px; font-size: 13px; opacity: 0.9;">
-                    Analyze extracted Reddit data with OpenAI to identify AI tool demand patterns and MVP opportunities.
+                    Analyze Reddit data with OpenAI to identify AI tool demand patterns and MVP opportunities.
                 </p>
                 
-                <div class="reddit-options">
+                <div class="csv-files">
+                    <h4>Select data source for analysis:</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin: 10px 0;">
+                            <input type="radio" name="dataSource" value="extracted" checked>
+                            Use extracted Reddit data (from Reddit mode)
+                        </label>
+                        <label style="display: block; margin: 10px 0;">
+                            <input type="radio" name="dataSource" value="file">
+                            Upload JSON file
+                        </label>
+                    </div>
+                    <input type="file" id="jsonFileInput" accept=".json" class="file-input" style="display: none;">
+                    <div class="file-info" id="jsonFileInfo" style="display: none;">
+                        <p>Selected file: <span id="jsonFileName"></span></p>
+                        <p>Posts found: <span id="jsonPostCount">0</span></p>
+                    </div>
+                </div>
+                
+                <div class="options">
                     <label>
                         <input type="checkbox" id="includeComments" checked>
                         Include comments in analysis
@@ -556,13 +656,13 @@
                     </label>
                 </div>
                 
-                <div class="reddit-buttons">
+                <div class="button-group">
                     <button id="startAIAnalysis" class="btn btn-primary">
                         <div class="mode-icon ai-icon"></div>
                         Start AI Analysis
                     </button>
                     <button id="viewResults" class="btn btn-secondary" style="display: none;">
-                        View Analysis Results
+                        View Detailed Results
                     </button>
                     <button id="exportAnalysis" class="btn btn-secondary" style="display: none;">
                         Export Analysis
@@ -572,7 +672,7 @@
                 <div id="aiStatus" class="status"></div>
                 
                 <!-- AI Analysis Progress -->
-                <div id="aiProgress" class="reddit-progress" style="display: none;">
+                <div id="aiProgress" class="progress-section" style="display: none;">
                     <h4>AI Analysis Progress</h4>
                     <div class="progress-bar">
                         <div id="aiProgressFill" class="progress-fill"></div>
@@ -581,14 +681,43 @@
                         <span id="aiProgressText">0 / 0</span>
                         <span id="aiProgressPercent">0%</span>
                     </div>
-                    <div id="aiCurrentTask" class="current-url"></div>
+                    <div id="aiCurrentTask" class="current-task"></div>
                 </div>
-                
-                <!-- Analysis Results Preview -->
-                <div id="analysisResults" class="reddit-progress" style="display: none;">
-                    <h4>📊 Analysis Results</h4>
-                    <div id="resultsPreview" style="font-size: 12px; line-height: 1.4;">
-                        <!-- Results will be populated here -->
+            </div>
+            
+            <!-- Enhanced Analysis Results -->
+            <div id="analysisResults" class="analysis-results" style="display: none;">
+                <h4>📊 Analysis Results</h4>
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h5>🎯 Top Requested Tools</h5>
+                        <ul id="topToolsList" class="result-list">
+                            <!-- Populated by JavaScript -->
+                        </ul>
+                    </div>
+                    <div class="result-card">
+                        <h5>💡 MVP Recommendations</h5>
+                        <ul id="mvpList" class="result-list">
+                            <!-- Populated by JavaScript -->
+                        </ul>
+                    </div>
+                    <div class="result-card">
+                        <h5>⚠️ Common Issues</h5>
+                        <ul id="issuesList" class="result-list">
+                            <!-- Populated by JavaScript -->
+                        </ul>
+                    </div>
+                    <div class="result-card">
+                        <h5>✅ Praised Features</h5>
+                        <ul id="prosList" class="result-list">
+                            <!-- Populated by JavaScript -->
+                        </ul>
+                    </div>
+                </div>
+                <div class="action-plan">
+                    <h5>📋 24-Hour Action Plan</h5>
+                    <div id="actionPlanText">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -596,9 +725,10 @@
 
         <div class="footer">
             <p>Switch between Google, Reddit, and AI Analysis modes using the toggle above</p>
+            <p style="margin-top: 5px;">💡 <strong>Tip:</strong> Set up your OpenAI API key in extension options for AI analysis</p>
         </div>
     </div>
 
-    <script src="popup.js"></script>
+    <script src="sidepanel.js"></script>
 </body>
 </html>

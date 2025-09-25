@@ -1,4 +1,4 @@
-// Enhanced popup script with mode switching
+// Enhanced sidepanel script with mode switching and expanded AI analysis
 document.addEventListener('DOMContentLoaded', function () {
     // Mode switching elements
     const modeSwitcher = document.querySelector('.mode-switcher');
@@ -46,10 +46,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const aiProgressPercent = document.getElementById('aiProgressPercent');
     const aiCurrentTask = document.getElementById('aiCurrentTask');
     const analysisResults = document.getElementById('analysisResults');
-    const resultsPreview = document.getElementById('resultsPreview');
 
-    // Initialize popup
-    initializePopup();
+    // File selection elements
+    const jsonFileInput = document.getElementById('jsonFileInput');
+    const jsonFileInfo = document.getElementById('jsonFileInfo');
+    const jsonFileName = document.getElementById('jsonFileName');
+    const jsonPostCount = document.getElementById('jsonPostCount');
+    const dataSourceRadios = document.querySelectorAll('input[name="dataSource"]');
+
+    // Enhanced AI results elements
+    const topToolsList = document.getElementById('topToolsList');
+    const mvpList = document.getElementById('mvpList');
+    const issuesList = document.getElementById('issuesList');
+    const prosList = document.getElementById('prosList');
+    const actionPlanText = document.getElementById('actionPlanText');
+
+    // Initialize sidepanel
+    initializeSidepanel();
 
     // Event listeners
     setupModeSwitching();
@@ -107,10 +120,16 @@ document.addEventListener('DOMContentLoaded', function () {
         startAIAnalysis.addEventListener('click', startAIAnalysisProcess);
         viewResults.addEventListener('click', viewAnalysisResults);
         exportAnalysis.addEventListener('click', exportAnalysisResults);
+
+        // File selection setup
+        jsonFileInput.addEventListener('change', handleJSONFileSelect);
+        dataSourceRadios.forEach(radio => {
+            radio.addEventListener('change', handleDataSourceChange);
+        });
     }
 
-    // Initialize popup data
-    async function initializePopup() {
+    // Initialize sidepanel data
+    async function initializeSidepanel() {
         try {
             // Get current tab info
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -132,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         } catch (error) {
-            console.error('Error initializing popup:', error);
+            console.error('Error initializing sidepanel:', error);
             showStatus('Error initializing extension', 'error');
         }
     }
@@ -462,28 +481,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show status in Google mode
-    function showStatus(message, type) {
-        statusDiv.textContent = message;
-        statusDiv.className = `status ${type}`;
-        statusDiv.style.display = 'block';
-
-        setTimeout(() => {
-            statusDiv.style.display = 'none';
-        }, 3000);
-    }
-
-    // Show status in Reddit mode
-    function showRedditStatus(message, type) {
-        redditStatus.textContent = message;
-        redditStatus.className = `status ${type}`;
-        redditStatus.style.display = 'block';
-
-        setTimeout(() => {
-            redditStatus.style.display = 'none';
-        }, 5000);
-    }
-
     // Update AI status display
     function updateAIStatus(analysis, perPostResults, aggregateResults) {
         postsAnalyzed.textContent = perPostResults.length;
@@ -499,6 +496,53 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Handle data source change
+    function handleDataSourceChange() {
+        const selectedSource = document.querySelector('input[name="dataSource"]:checked').value;
+        if (selectedSource === 'file') {
+            jsonFileInput.style.display = 'block';
+        } else {
+            jsonFileInput.style.display = 'none';
+            jsonFileInfo.style.display = 'none';
+        }
+    }
+
+    // Handle JSON file selection
+    function handleJSONFileSelect(event) {
+        const file = event.target.files[0];
+        if (file && file.type === 'application/json') {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    let postCount = 0;
+
+                    // Handle different JSON structures
+                    if (Array.isArray(jsonData)) {
+                        postCount = jsonData.length;
+                    } else if (jsonData.extractedData) {
+                        postCount = jsonData.extractedData.length;
+                    } else if (jsonData.posts) {
+                        postCount = jsonData.posts.length;
+                    }
+
+                    jsonFileName.textContent = file.name;
+                    jsonPostCount.textContent = postCount;
+                    jsonFileInfo.style.display = 'block';
+
+                    // Store the parsed data for analysis
+                    window.selectedJSONData = jsonData;
+                } catch (error) {
+                    console.error('Error parsing JSON file:', error);
+                    showAIStatus('Error parsing JSON file. Please ensure it\'s a valid JSON file.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            showAIStatus('Please select a valid JSON file', 'error');
+        }
+    }
+
     // Start AI analysis process
     async function startAIAnalysisProcess() {
         try {
@@ -509,21 +553,51 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Get extracted Reddit data
-            const { redditExtraction } = await chrome.storage.local.get(['redditExtraction']);
-            if (!redditExtraction.extractedData || redditExtraction.extractedData.length === 0) {
-                showAIStatus('No Reddit data found. Please extract Reddit data first.', 'error');
+            // Get data based on selected source
+            const selectedSource = document.querySelector('input[name="dataSource"]:checked').value;
+            let postsToAnalyze = [];
+
+            if (selectedSource === 'extracted') {
+                // Get extracted Reddit data
+                const { redditExtraction } = await chrome.storage.local.get(['redditExtraction']);
+                if (!redditExtraction.extractedData || redditExtraction.extractedData.length === 0) {
+                    showAIStatus('No Reddit data found. Please extract Reddit data first or select a JSON file.', 'error');
+                    return;
+                }
+                postsToAnalyze = redditExtraction.extractedData;
+            } else if (selectedSource === 'file') {
+                // Use uploaded JSON file
+                if (!window.selectedJSONData) {
+                    showAIStatus('Please select a JSON file first', 'error');
+                    return;
+                }
+
+                // Extract posts from different JSON structures
+                if (Array.isArray(window.selectedJSONData)) {
+                    postsToAnalyze = window.selectedJSONData;
+                } else if (window.selectedJSONData.extractedData) {
+                    postsToAnalyze = window.selectedJSONData.extractedData;
+                } else if (window.selectedJSONData.posts) {
+                    postsToAnalyze = window.selectedJSONData.posts;
+                } else {
+                    showAIStatus('Invalid JSON structure. Expected array of posts or object with extractedData/posts property.', 'error');
+                    return;
+                }
+            }
+
+            if (postsToAnalyze.length === 0) {
+                showAIStatus('No posts found in the selected data source', 'error');
                 return;
             }
 
             startAIAnalysis.disabled = true;
             startAIAnalysis.innerHTML = '<div class="loading"></div>Starting Analysis...';
-            showAIStatus('Starting AI analysis...', 'success');
+            showAIStatus(`Starting AI analysis of ${postsToAnalyze.length} posts...`, 'success');
 
             // Send message to background script to start AI analysis
             const response = await chrome.runtime.sendMessage({
                 type: 'ANALYZE',
-                posts: redditExtraction.extractedData
+                posts: postsToAnalyze
             });
 
             if (response.ok) {
@@ -565,26 +639,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show analysis results
+    // Show enhanced analysis results
     function showAnalysisResults(aggregateResults) {
         analysisResults.style.display = 'block';
 
-        const preview = `
-            <div style="margin-bottom: 15px;">
-                <strong>🎯 Top Requested Tools:</strong><br>
-                ${(aggregateResults.top_requested_tools || []).slice(0, 5).map(tool => `• ${tool}`).join('<br>')}
-            </div>
-            <div style="margin-bottom: 15px;">
-                <strong>💡 MVP Recommendations:</strong><br>
-                ${(aggregateResults.mvp_recommendations || []).slice(0, 3).map(rec => `• ${rec}`).join('<br>')}
-            </div>
-            <div style="margin-bottom: 15px;">
-                <strong>📋 Action Plan:</strong><br>
-                ${aggregateResults.short_action_plan || 'No action plan generated'}
-            </div>
-        `;
+        // Populate top tools
+        const topTools = (aggregateResults.top_requested_tools || []).slice(0, 5);
+        topToolsList.innerHTML = topTools.map(tool => `<li>${tool}</li>`).join('');
 
-        resultsPreview.innerHTML = preview;
+        // Populate MVP recommendations
+        const mvpRecs = (aggregateResults.mvp_recommendations || []).slice(0, 5);
+        mvpList.innerHTML = mvpRecs.map(rec => `<li>${rec}</li>`).join('');
+
+        // Populate common issues
+        const issues = (aggregateResults.common_issues || []).slice(0, 5);
+        issuesList.innerHTML = issues.map(issue => `<li>${issue}</li>`).join('');
+
+        // Populate praised features
+        const pros = (aggregateResults.common_pros || []).slice(0, 5);
+        prosList.innerHTML = pros.map(pro => `<li>${pro}</li>`).join('');
+
+        // Populate action plan
+        actionPlanText.textContent = aggregateResults.short_action_plan || 'No action plan generated';
     }
 
     // View analysis results
@@ -625,6 +701,28 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error exporting analysis:', error);
             showAIStatus('Error exporting analysis: ' + error.message, 'error');
         }
+    }
+
+    // Show status in Google mode
+    function showStatus(message, type) {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+        statusDiv.style.display = 'block';
+
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+    }
+
+    // Show status in Reddit mode
+    function showRedditStatus(message, type) {
+        redditStatus.textContent = message;
+        redditStatus.className = `status ${type}`;
+        redditStatus.style.display = 'block';
+
+        setTimeout(() => {
+            redditStatus.style.display = 'none';
+        }, 5000);
     }
 
     // Show status in AI mode
