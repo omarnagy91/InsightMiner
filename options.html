@@ -2,89 +2,134 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Demand Intelligence Miner - Settings</title>
     <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 12px 40px rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.2);
+            --border-radius: 16px;
+            --border-radius-small: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: var(--primary-gradient);
+            color: var(--text-primary);
             min-height: 100vh;
+            line-height: 1.6;
         }
         
         .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            box-shadow: var(--shadow-heavy);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
         }
         
         h1 {
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 28px;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
         }
         
         .warning {
-            background: rgba(255, 193, 7, 0.2);
-            border: 1px solid rgba(255, 193, 7, 0.5);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            border-radius: var(--border-radius-small);
+            padding: 20px;
+            margin-bottom: 30px;
             font-size: 14px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
         }
         
         label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
         }
         
-        input[type="password"] {
+        input[type="password"], input[type="text"], textarea, select {
             width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            padding: 14px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            background: var(--glass-bg);
+            color: var(--text-primary);
             font-size: 14px;
             box-sizing: border-box;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
         }
         
-        input[type="password"]::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+        input[type="password"]::placeholder, input[type="text"]::placeholder, textarea::placeholder {
+            color: var(--text-muted);
         }
         
-        input[type="password"]:focus {
+        input[type="password"]:focus, input[type="text"]:focus, textarea:focus, select:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.6);
+            border-color: rgba(255, 255, 255, 0.5);
             background: rgba(255, 255, 255, 0.15);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-
-        .form-select:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         .form-select option {
@@ -93,99 +138,211 @@
         }
 
         .form-textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 14px;
-            box-sizing: border-box;
+            min-height: 120px;
             resize: vertical;
-            min-height: 100px;
-        }
-
-        .form-textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-textarea:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.15);
+            font-family: inherit;
         }
 
         .form-help {
             display: block;
-            margin-top: 5px;
+            margin-top: 8px;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
         }
         
         .btn {
-            background: #4CAF50;
+            background: var(--success-gradient);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 16px 24px;
+            border-radius: var(--border-radius-small);
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             width: 100%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
         
         .btn:hover {
-            background: #45a049;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
         
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
+        }
+
+        .btn:disabled::before {
+            display: none;
+        }
+
+        .btn-secondary {
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         
         .status {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: var(--border-radius-small);
             font-size: 14px;
             text-align: center;
             display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid;
+            animation: slideInDown 0.3s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .status.success {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.5);
+            background: rgba(76, 175, 80, 0.15);
+            border-color: rgba(76, 175, 80, 0.4);
+            color: #4CAF50;
         }
         
         .status.error {
-            background: rgba(244, 67, 54, 0.2);
-            border: 1px solid rgba(244, 67, 54, 0.5);
+            background: rgba(244, 67, 54, 0.15);
+            border-color: rgba(244, 67, 54, 0.4);
+            color: #f44336;
         }
         
         .info {
-            background: rgba(33, 150, 243, 0.2);
-            border: 1px solid rgba(33, 150, 243, 0.5);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            font-size: 13px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-top: 30px;
+            font-size: 14px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
+            position: relative;
+            z-index: 1;
         }
         
         .info h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
         
         .info ul {
-            margin: 10px 0;
-            padding-left: 20px;
+            margin: 12px 0;
+            padding-left: 24px;
         }
         
         .info li {
-            margin: 5px 0;
+            margin: 8px 0;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .info a {
+            color: #81C784;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .info a:hover {
+            color: #4CAF50;
+            text-decoration: underline;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 16px;
+            margin-top: 30px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 16px;
+            }
+
+            .container {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus indicators for accessibility */
+        .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid #4CAF50;
+            outline-offset: 2px;
         }
     </style>
 </head>
@@ -199,41 +356,48 @@
         </div>
         
         <div class="form-group">
-            <label for="key">OpenAI API Key:</label>
-            <input id="key" type="password" placeholder="sk-..." />
+            <label for="key">🔑 OpenAI API Key:</label>
+            <div class="input-group">
+                <input id="key" type="password" placeholder="sk-..." />
+                <span class="input-icon">🔒</span>
+            </div>
+            <small class="form-help">Your API key is stored locally and never shared with third parties.</small>
         </div>
 
         <div class="form-group">
-            <label for="model">AI Model:</label>
-            <select id="model" class="form-select">
+            <label for="model">🤖 AI Model:</label>
+            <select id="model">
                 <option value="gpt-4o">GPT-4o (Recommended)</option>
                 <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
                 <option value="gpt-4-turbo">GPT-4 Turbo</option>
                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
             </select>
+            <small class="form-help">Choose the AI model that best fits your needs and budget.</small>
         </div>
 
         <div class="form-group">
-            <label for="searchPrompt">Search Query Generation Prompt:</label>
-            <textarea id="searchPrompt" class="form-textarea" rows="4" placeholder="Enter custom prompt for generating search queries..."></textarea>
+            <label for="searchPrompt">🔍 Search Query Generation Prompt:</label>
+            <textarea id="searchPrompt" rows="4" placeholder="Enter custom prompt for generating search queries..."></textarea>
             <small class="form-help">This prompt will be used to generate Google search queries for each selected platform.</small>
         </div>
 
         <div class="form-group">
-            <label for="analysisPrompt">Analysis Prompt:</label>
-            <textarea id="analysisPrompt" class="form-textarea" rows="4" placeholder="Enter custom prompt for AI analysis..."></textarea>
+            <label for="analysisPrompt">📊 Analysis Prompt:</label>
+            <textarea id="analysisPrompt" rows="4" placeholder="Enter custom prompt for AI analysis..."></textarea>
             <small class="form-help">This prompt will be used to analyze extracted data and identify demand patterns.</small>
         </div>
         
-        <button id="save" class="btn">Save Settings</button>
-        <button id="reset" class="btn btn-secondary">Reset to Defaults</button>
+        <div class="button-group">
+            <button id="save" class="btn">💾 Save Settings</button>
+            <button id="reset" class="btn btn-secondary">🔄 Reset to Defaults</button>
+        </div>
         
         <div id="status" class="status"></div>
         
         <div class="info">
             <h3>📋 How to get your OpenAI API Key:</h3>
             <ul>
-                <li>Visit <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #81C784;">platform.openai.com/api-keys</a></li>
+                <li>Visit <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a></li>
                 <li>Sign in to your OpenAI account</li>
                 <li>Click "Create new secret key"</li>
                 <li>Copy the key (starts with "sk-")</li>
@@ -248,6 +412,14 @@
                 <li>Choose the AI model that best fits your needs and budget</li>
                 <li>Customize prompts to focus on specific aspects of your analysis</li>
                 <li>Select multiple data sources for comprehensive insights</li>
+            </ul>
+
+            <h3>⚡ Keyboard Shortcuts:</h3>
+            <ul>
+                <li><strong>Ctrl/Cmd + 1:</strong> Switch to Sources mode</li>
+                <li><strong>Ctrl/Cmd + 2:</strong> Switch to Extraction mode</li>
+                <li><strong>Ctrl/Cmd + 3:</strong> Switch to AI Analysis mode</li>
+                <li><strong>Escape:</strong> Clear status messages</li>
             </ul>
         </div>
     </div>

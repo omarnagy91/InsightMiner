@@ -2,6 +2,8 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Demand Intelligence Miner</title>
     <style>
         * {
             margin: 0;
@@ -9,13 +11,33 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 12px 40px rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.2);
+            --border-radius: 16px;
+            --border-radius-small: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
             width: 100%;
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-gradient);
+            color: var(--text-primary);
             overflow-x: hidden;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
         .container {
@@ -23,61 +45,95 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        /* Header with Toggle Switcher */
+        /* Header with Enhanced Design */
         .header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 24px 20px;
             text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid var(--glass-border);
             flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
         }
 
         .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
         }
 
-        /* Toggle Switcher */
+        /* Enhanced Mode Switcher */
         .mode-switcher {
             display: flex;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 25px;
-            padding: 4px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 6px;
             margin: 0 auto;
             width: 100%;
             max-width: 400px;
             position: relative;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-light);
         }
 
         .mode-option {
             flex: 1;
-            padding: 12px 15px;
+            padding: 12px 16px;
             text-align: center;
             cursor: pointer;
-            border-radius: 20px;
-            transition: all 0.3s ease;
+            border-radius: 14px;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
             position: relative;
             z-index: 2;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
         }
 
         .mode-option.active {
-            background: white;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
             color: #333;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--shadow-light);
+            transform: translateY(-1px);
         }
 
-        .mode-option:not(.active) {
-            color: rgba(255, 255, 255, 0.8);
+        .mode-option:not(.active):hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         .mode-icon {
@@ -120,112 +176,164 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFD700' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
         }
 
-        /* Content Areas */
+        /* Enhanced Content Areas */
         .content-area {
             display: none;
-            padding: 20px;
+            padding: 24px 20px;
             flex: 1;
             overflow-y: auto;
+            scroll-behavior: smooth;
         }
 
         .content-area.active {
             display: block;
+            animation: fadeInUp 0.4s ease-out;
         }
 
-        /* Sources Theme */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced Theme System */
         .sources-theme {
             background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
         }
 
         .sources-theme .stats {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
         }
 
         .sources-theme .btn-primary {
-            background: #4285F4;
+            background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
             border: none;
             color: white;
+            box-shadow: var(--shadow-light);
         }
 
         .sources-theme .btn-primary:hover {
-            background: #3367D6;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
-        /* Extraction Theme */
         .extraction-theme {
             background: linear-gradient(135deg, #FF4500 0%, #FF6B35 100%);
         }
 
         .extraction-theme .stats {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
         }
 
         .extraction-theme .btn-primary {
-            background: #FF4500;
+            background: linear-gradient(135deg, #FF4500 0%, #FF6B35 100%);
             border: none;
             color: white;
+            box-shadow: var(--shadow-light);
         }
 
         .extraction-theme .btn-primary:hover {
-            background: #E03E00;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
-        /* AI Theme */
         .ai-theme {
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
         }
 
         .ai-theme .stats {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
         }
 
         .ai-theme .btn-primary {
-            background: #FFD700;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
             border: none;
             color: #333;
+            box-shadow: var(--shadow-light);
         }
 
         .ai-theme .btn-primary:hover {
-            background: #FFC107;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
-        /* Common Styles */
+        /* Enhanced Common Styles */
         .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .stat-item {
             text-align: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
+            padding: 20px 16px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
             backdrop-filter: blur(10px);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--success-gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-item:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
         }
 
         .stat-label {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-bottom: 5px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .stat-value {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .buttons {
@@ -235,78 +343,121 @@
         }
 
         .btn {
-            padding: 12px 20px;
+            padding: 14px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--border-radius-small);
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             text-align: center;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
-            background: #4CAF50;
+            background: var(--success-gradient);
             color: white;
+            box-shadow: var(--shadow-light);
         }
 
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
         .btn-danger {
-            background: #f44336;
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
             color: white;
+            box-shadow: var(--shadow-light);
         }
 
         .btn-danger:hover {
-            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
-        .status {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            text-align: center;
+        .btn:disabled::before {
             display: none;
         }
 
+        .status {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: var(--border-radius-small);
+            font-size: 13px;
+            text-align: center;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid;
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .status.success {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.5);
+            background: rgba(76, 175, 80, 0.15);
+            border-color: rgba(76, 175, 80, 0.4);
+            color: #4CAF50;
         }
 
         .status.error {
-            background: rgba(244, 67, 54, 0.2);
-            border: 1px solid rgba(244, 67, 54, 0.5);
+            background: rgba(244, 67, 54, 0.15);
+            border-color: rgba(244, 67, 54, 0.4);
+            color: #f44336;
         }
 
         .loading {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: white;
@@ -317,158 +468,261 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Enhanced sidebar-specific styles */
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Enhanced Sidebar Sections */
         .sidebar-section {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
+            transition: var(--transition);
+        }
+
+        .sidebar-section:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
         .sidebar-section h3 {
-            margin: 0 0 15px 0;
+            margin: 0 0 20px 0;
             font-size: 16px;
+            font-weight: 700;
             text-align: center;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .file-input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            padding: 14px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            background: var(--glass-bg);
+            color: var(--text-primary);
             font-size: 14px;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .file-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
         }
 
         .file-input::file-selector-button {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            padding: 6px 12px;
-            margin-right: 10px;
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            padding: 8px 16px;
+            margin-right: 12px;
             cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+        }
+
+        .file-input::file-selector-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
         .file-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 16px;
+            border-radius: var(--border-radius-small);
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
         }
 
         .file-info p {
-            margin: 5px 0;
-            font-size: 12px;
+            margin: 6px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
         }
 
         .options {
-            margin: 15px 0;
+            margin: 20px 0;
         }
 
         .options label {
-            display: block;
-            margin: 10px 0;
-            font-size: 13px;
-            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            margin: 12px 0;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: var(--border-radius-small);
+            transition: var(--transition);
+            color: var(--text-secondary);
+        }
+
+        .options label:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
         }
 
         .options input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
             margin: 0;
+            accent-color: #4CAF50;
+            cursor: pointer;
+        }
+
+        .options input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            accent-color: #4CAF50;
+            cursor: pointer;
         }
 
         .button-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 12px;
+            margin-top: 20px;
         }
 
         .progress-section {
-            margin-top: 15px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
+            margin-top: 20px;
+            padding: 24px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
         }
 
         .progress-section h4 {
-            margin: 0 0 15px 0;
-            font-size: 14px;
+            margin: 0 0 20px 0;
+            font-size: 15px;
+            font-weight: 600;
             text-align: center;
+            color: var(--text-primary);
         }
 
         .progress-bar {
             width: 100%;
-            height: 24px;
+            height: 8px;
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            position: relative;
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #45a049);
+            background: var(--success-gradient);
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: progressShimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes progressShimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
         .progress-info {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
         }
 
         .current-task {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.8);
-            word-break: break-all;
-            margin-bottom: 15px;
-            max-height: 40px;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-word;
+            margin-bottom: 16px;
+            max-height: 60px;
             overflow-y: auto;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius-small);
+            border-left: 3px solid var(--success-gradient);
         }
 
         /* Enhanced AI Analysis Results */
         .analysis-results {
-            margin-top: 15px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
+            margin-top: 20px;
+            padding: 24px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-light);
         }
 
         .analysis-results h4 {
-            margin: 0 0 15px 0;
-            font-size: 14px;
+            margin: 0 0 20px 0;
+            font-size: 16px;
+            font-weight: 700;
             text-align: center;
+            color: var(--text-primary);
         }
 
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .result-card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 16px;
+            border-radius: var(--border-radius-small);
+            font-size: 13px;
+            transition: var(--transition);
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
         }
 
         .result-card h5 {
-            margin: 0 0 10px 0;
-            font-size: 13px;
+            margin: 0 0 12px 0;
+            font-size: 14px;
             font-weight: 600;
+            color: var(--text-primary);
         }
 
         .result-list {
@@ -477,69 +731,170 @@
         }
 
         .result-list li {
-            margin: 5px 0;
-            padding: 5px;
+            margin: 6px 0;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius-small);
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-left: 3px solid transparent;
+            transition: var(--transition);
+        }
+
+        .result-list li:hover {
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            font-size: 11px;
+            border-left-color: var(--success-gradient);
+            color: var(--text-primary);
         }
 
         .action-plan {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 12px;
-            line-height: 1.4;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: var(--border-radius-small);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
         }
 
         .footer {
-            margin-top: 20px;
+            margin-top: 24px;
             text-align: center;
-            font-size: 11px;
-            opacity: 0.7;
-            padding: 0 20px 20px;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 0 20px 24px;
             flex-shrink: 0;
+            line-height: 1.5;
         }
 
-        /* Responsive adjustments for sidebar */
+        .footer p {
+            margin: 4px 0;
+        }
+
+        /* Enhanced Input Styling */
+        input[type="text"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="text"]::placeholder, input[type="password"]::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Enhanced Scrollbar */
+        .content-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .content-area::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .content-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .content-area::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Responsive Design */
         @media (max-width: 400px) {
             .mode-switcher {
                 flex-direction: column;
-                gap: 5px;
+                gap: 6px;
             }
             
             .mode-option {
-                padding: 8px 12px;
+                padding: 10px 12px;
+                font-size: 12px;
             }
             
             .results-grid {
                 grid-template-columns: 1fr;
+                gap: 12px;
             }
+
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .sidebar-section {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            .content-area {
+                padding: 16px;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --glass-bg: rgba(0, 0, 0, 0.2);
+                --glass-border: rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus indicators for accessibility */
+        .btn:focus-visible, .mode-option:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid #4CAF50;
+            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header with Mode Switcher -->
+        <!-- Enhanced Header with Mode Switcher -->
         <div class="header">
-            <h1>AI Demand Intelligence Miner</h1>
+            <h1>🤖 AI Demand Intelligence Miner</h1>
             <div class="mode-switcher">
-                <div class="mode-option active" data-mode="sources">
+                <button class="mode-option active" data-mode="sources" aria-label="Sources Mode">
                     <div class="mode-icon sources-icon"></div>
                     <span>Sources</span>
-                </div>
-                <div class="mode-option" data-mode="extraction">
+                </button>
+                <button class="mode-option" data-mode="extraction" aria-label="Extraction Mode">
                     <div class="mode-icon extraction-icon"></div>
                     <span>Extraction</span>
-                </div>
-                <div class="mode-option" data-mode="ai">
+                </button>
+                <button class="mode-option" data-mode="ai" aria-label="AI Analysis Mode">
                     <div class="mode-icon ai-icon"></div>
                     <span>AI Analysis</span>
-                </div>
+                </button>
             </div>
         </div>
 
-        <!-- Sources Mode -->
+        <!-- Enhanced Sources Mode -->
         <div id="sourcesMode" class="content-area sources-theme active">
             <div class="stats">
                 <div class="stat-item">
@@ -558,40 +913,62 @@
                     <label>
                         <input type="checkbox" id="redditCheckbox" checked>
                         <div class="mode-icon reddit-icon"></div>
-                        Reddit
+                        <span>Reddit</span>
                     </label>
                     <label>
                         <input type="checkbox" id="stackoverflowCheckbox">
                         <div class="mode-icon stackoverflow-icon"></div>
-                        Stack Overflow
+                        <span>Stack Overflow</span>
                     </label>
                     <label>
                         <input type="checkbox" id="githubCheckbox">
                         <div class="mode-icon github-icon"></div>
-                        GitHub
+                        <span>GitHub</span>
                     </label>
                     <label>
                         <input type="checkbox" id="devtoCheckbox">
                         <div class="mode-icon devto-icon"></div>
-                        Dev.to
+                        <span>Dev.to</span>
                     </label>
                     <label>
                         <input type="checkbox" id="mediumCheckbox">
                         <div class="mode-icon medium-icon"></div>
-                        Medium
+                        <span>Medium</span>
                     </label>
                 </div>
+                
+                <div style="margin: 20px 0;">
+                    <label for="topicInput" style="display: block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                        💡 Enter topic or idea for analysis:
+                    </label>
+                    <input type="text" id="topicInput" placeholder="e.g., AI tools for developers, machine learning frameworks" 
+                           style="width: 100%; padding: 12px 16px; border: 1px solid var(--glass-border); border-radius: var(--border-radius-small); background: var(--glass-bg); color: var(--text-primary); font-size: 14px; backdrop-filter: blur(10px);">
+                </div>
+                
                 <div class="buttons">
                     <button id="generateDorks" class="btn btn-primary">
                         <div class="mode-icon sources-icon"></div>
-                        Generate AI-Powered Search Queries
+                        <span>Generate AI-Powered Search Queries</span>
                     </button>
                 </div>
                 <div id="sourcesStatus" class="status"></div>
+                
+                <!-- Google Search Progress -->
+                <div id="googleSearchProgress" class="progress-section" style="display: none;">
+                    <h4>Google Search Progress</h4>
+                    <div class="progress-bar">
+                        <div id="googleProgressFill" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="googleProgressText">0 / 0</span>
+                        <span id="googleProgressPercent">0%</span>
+                    </div>
+                    <div id="googleCurrentQuery" class="current-task"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Extraction Mode -->
+        <!-- Enhanced Extraction Mode -->
         <div id="extractionMode" class="content-area extraction-theme">
             <div class="stats">
                 <div class="stat-item">
@@ -607,32 +984,36 @@
             <div class="sidebar-section">
                 <h3>📊 Multi-Platform Data Extraction</h3>
                 <div class="csv-files">
-                    <h4>Select CSV file with search results:</h4>
+                    <h4 style="margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text-primary);">📁 Select CSV file with search results:</h4>
                     <input type="file" id="csvFileInput" accept=".csv" class="file-input">
                     <div class="file-info" id="fileInfo" style="display: none;">
-                        <p>Selected file: <span id="fileName"></span></p>
-                        <p>Total URLs found: <span id="urlCount">0</span></p>
+                        <p><strong>Selected file:</strong> <span id="fileName"></span></p>
+                        <p><strong>Total URLs found:</strong> <span id="urlCount">0</span></p>
                         <div id="sourceBreakdown"></div>
                     </div>
                 </div>
                 <div class="options">
                     <label>
                         <input type="checkbox" id="closeTabs" checked>
-                        Close tabs after extraction (saves resources)
+                        <span>Close tabs after extraction (saves resources)</span>
                     </label>
                     <label>
                         <input type="checkbox" id="extractComments" checked>
-                        Extract comments
+                        <span>Extract comments</span>
                     </label>
                     <label>
                         <input type="checkbox" id="extractMetadata" checked>
-                        Extract metadata
+                        <span>Extract metadata</span>
                     </label>
                 </div>
                 <div class="button-group">
+                    <button id="exportSearchResults" class="btn btn-secondary" style="display: none;">
+                        <div class="mode-icon extraction-icon"></div>
+                        <span>Export Search Results to CSV</span>
+                    </button>
                     <button id="startExtraction" class="btn btn-primary">
                         <div class="mode-icon extraction-icon"></div>
-                        Start Data Extraction
+                        <span>Start Data Extraction</span>
                     </button>
                 </div>
                 <div id="extractionStatus" class="status"></div>
@@ -653,7 +1034,7 @@
             </div>
         </div>
 
-        <!-- AI Analysis Mode -->
+        <!-- Enhanced AI Analysis Mode -->
         <div id="aiMode" class="content-area ai-theme">
             <div class="stats">
                 <div class="stat-item">
@@ -668,63 +1049,63 @@
 
             <div class="sidebar-section">
                 <h3>🤖 AI Analysis with OpenAI</h3>
-                <p style="margin-bottom: 15px; font-size: 13px; opacity: 0.9;">
+                <p style="margin-bottom: 20px; font-size: 14px; color: var(--text-secondary); line-height: 1.5;">
                     Analyze multi-platform data with OpenAI to identify AI tool demand patterns and MVP opportunities.
                 </p>
                 
                 <div class="csv-files">
-                    <h4>Select data source for analysis:</h4>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin: 10px 0;">
+                    <h4 style="margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text-primary);">📊 Select data source for analysis:</h4>
+                    <div style="margin-bottom: 20px;">
+                        <label>
                             <input type="radio" name="dataSource" value="extracted" checked>
-                            Use extracted data (from Extraction mode)
+                            <span>Use extracted data (from Extraction mode)</span>
                         </label>
-                        <label style="display: block; margin: 10px 0;">
+                        <label>
                             <input type="radio" name="dataSource" value="file">
-                            Upload JSON file
+                            <span>Upload JSON file</span>
                         </label>
-                        <label style="display: block; margin: 10px 0;">
+                        <label>
                             <input type="radio" name="dataSource" value="report">
-                            Open previously exported report
+                            <span>Open previously exported report</span>
                         </label>
                     </div>
                     <input type="file" id="jsonFileInput" accept=".json" class="file-input" style="display: none;">
                     <input type="file" id="reportFileInput" accept=".json" class="file-input" style="display: none;">
                     <div class="file-info" id="jsonFileInfo" style="display: none;">
-                        <p>Selected file: <span id="jsonFileName"></span></p>
-                        <p>Items found: <span id="jsonItemCount">0</span></p>
+                        <p><strong>Selected file:</strong> <span id="jsonFileName"></span></p>
+                        <p><strong>Items found:</strong> <span id="jsonItemCount">0</span></p>
                     </div>
                     <div class="file-info" id="reportFileInfo" style="display: none;">
-                        <p>Selected report: <span id="reportFileName"></span></p>
-                        <p>Report type: <span id="reportType">AI Analysis Report</span></p>
+                        <p><strong>Selected report:</strong> <span id="reportFileName"></span></p>
+                        <p><strong>Report type:</strong> <span id="reportType">AI Analysis Report</span></p>
                     </div>
                 </div>
                 
                 <div class="options">
                     <label>
                         <input type="checkbox" id="includeComments" checked>
-                        Include comments in analysis
+                        <span>Include comments in analysis</span>
                     </label>
                     <label>
                         <input type="checkbox" id="generateMVP" checked>
-                        Generate MVP recommendations
+                        <span>Generate MVP recommendations</span>
                     </label>
                 </div>
                 
                 <div class="button-group">
                     <button id="startAIAnalysis" class="btn btn-primary">
                         <div class="mode-icon ai-icon"></div>
-                        Start AI Analysis
+                        <span>Start AI Analysis</span>
                     </button>
                     <button id="openReport" class="btn btn-primary" style="display: none;">
                         <div class="mode-icon ai-icon"></div>
-                        Open Report in Analysis Tab
+                        <span>Open Report in Analysis Tab</span>
                     </button>
                     <button id="viewResults" class="btn btn-secondary" style="display: none;">
-                        View Detailed Results
+                        <span>View Detailed Results</span>
                     </button>
                     <button id="exportAnalysis" class="btn btn-secondary" style="display: none;">
-                        Export Analysis
+                        <span>Export Analysis</span>
                     </button>
                 </div>
                 
@@ -783,8 +1164,9 @@
         </div>
 
         <div class="footer">
-            <p>Switch between Sources, Extraction, and AI Analysis modes using the toggle above</p>
-            <p style="margin-top: 5px;">💡 <strong>Tip:</strong> Set up your OpenAI API key in extension options for AI analysis</p>
+            <p>🔄 Switch between Sources, Extraction, and AI Analysis modes using the toggle above</p>
+            <p>💡 <strong>Tip:</strong> Set up your OpenAI API key in extension options for AI analysis</p>
+            <p>⚡ <strong>Pro tip:</strong> Use keyboard shortcuts for faster navigation</p>
         </div>
     </div>
 

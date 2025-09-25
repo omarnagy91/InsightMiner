@@ -67,6 +67,48 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+// Notification system for manual intervention
+function showNotification(title, message, type = 'basic') {
+    chrome.notifications.create({
+        type: type,
+        iconUrl: 'icons/icon48.png',
+        title: title,
+        message: message,
+        buttons: [
+            { title: 'Open Extension' },
+            { title: 'Dismiss' }
+        ]
+    });
+}
+
+// Handle notification clicks
+chrome.notifications.onClicked.addListener((notificationId) => {
+    chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT }).catch(() => {
+        // Fallback: try to open in any available window
+        chrome.windows.getCurrent().then(window => {
+            chrome.sidePanel.open({ windowId: window.id });
+        }).catch(() => {
+            console.log('Could not open sidepanel');
+        });
+    });
+    chrome.notifications.clear(notificationId);
+});
+
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+    if (buttonIndex === 0) {
+        // Open Extension button
+        chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT }).catch(() => {
+            // Fallback: try to open in any available window
+            chrome.windows.getCurrent().then(window => {
+                chrome.sidePanel.open({ windowId: window.id });
+            }).catch(() => {
+                console.log('Could not open sidepanel');
+            });
+        });
+    }
+    chrome.notifications.clear(notificationId);
+});
+
 // ---- OpenAI API Helpers ----
 async function getKey() {
     return new Promise((resolve, reject) => {
@@ -125,9 +167,24 @@ For the topic "{topic}" on {platform}, create a Google search query that will fi
 - Tools they're looking for
 - Feature requests and suggestions
 
-The query should be specific to {platform} and use appropriate search operators.
+IMPORTANT: Use these proven search patterns for each platform:
 
-Return only the search query, nothing else.`;
+For Reddit:
+- Use: (site:reddit.com OR site:old.reddit.com) inurl:comments (intitle:"best {topic}" OR intitle:"which {topic}" OR intext:"is there a {topic} that" OR intext:"any {topic} that" OR intext:"best {topic} for" OR intext:"recommend a {topic}" OR intext:"{topic} tool that can" OR intext:"{topic} to" ) -site:reddit.com/r/announcements -site:reddit.com/r/help
+
+For Stack Overflow:
+- Use: site:stackoverflow.com ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which" OR "looking for")
+
+For GitHub:
+- Use: site:github.com ("{topic}" OR "{topic} tool" OR "{topic} software") (issue OR discussion OR "feature request")
+
+For Dev.to:
+- Use: site:dev.to ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which")
+
+For Medium:
+- Use: site:medium.com ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which")
+
+Replace {topic} with the actual topic. Return only the search query, nothing else.`;
 }
 
 function getDefaultAnalysisPrompt() {
@@ -330,15 +387,37 @@ ${JSON.stringify(summary, null, 2)}`;
 // ---- Search Query Generation ----
 async function generateSearchQueries(topic, sources) {
     try {
-        const searchPrompt = await getSearchPrompt();
         const queries = [];
 
         for (const source of sources) {
             const platformName = getPlatformDisplayName(source);
-            const systemPrompt = searchPrompt.replace('{platform}', platformName);
-            const userPrompt = `Topic: ${topic}`;
+            let query = '';
 
-            const query = await openaiText({ system: systemPrompt, user: userPrompt });
+            // Use specific proven patterns for each platform
+            switch (source) {
+                case 'reddit':
+                    query = `(site:reddit.com OR site:old.reddit.com) inurl:comments (intitle:"best ${topic}" OR intitle:"which ${topic}" OR intext:"is there a ${topic} that" OR intext:"any ${topic} that" OR intitle:"best ${topic} for" OR intext:"recommend a ${topic}" OR intext:"${topic} tool that can" OR intext:"${topic} to" ) -site:reddit.com/r/announcements -site:reddit.com/r/help`;
+                    break;
+                case 'stackoverflow':
+                    query = `site:stackoverflow.com ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which" OR "looking for")`;
+                    break;
+                case 'github':
+                    query = `site:github.com ("${topic}" OR "${topic} tool" OR "${topic} software") (issue OR discussion OR "feature request")`;
+                    break;
+                case 'devto':
+                    query = `site:dev.to ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which")`;
+                    break;
+                case 'medium':
+                    query = `site:medium.com ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which")`;
+                    break;
+                default:
+                    // Fallback to AI generation for unknown platforms
+                    const searchPrompt = await getSearchPrompt();
+                    const systemPrompt = searchPrompt.replace('{platform}', platformName);
+                    const userPrompt = `Topic: ${topic}`;
+                    query = await openaiText({ system: systemPrompt, user: userPrompt });
+            }
+
             queries.push({
                 source: source,
                 platform: platformName,
@@ -353,10 +432,133 @@ async function generateSearchQueries(topic, sources) {
             lastQueryGeneration: new Date().toISOString()
         });
 
+        // Show notification that queries were generated
+        showNotification(
+            'Search Queries Generated',
+            `Generated ${queries.length} optimized search queries for ${sources.length} platforms. Starting Google searches...`,
+            'basic'
+        );
+
+        // Execute Google searches for each query
+        await executeGoogleSearches(queries);
+
         return queries;
     } catch (error) {
         console.error('Error generating search queries:', error);
         throw error;
+    }
+}
+
+// Execute Google searches for generated queries
+async function executeGoogleSearches(queries) {
+    try {
+        console.log(`Starting Google searches for ${queries.length} queries`);
+
+        // Initialize progress tracking
+        await chrome.storage.local.set({
+            googleSearchProgress: {
+                current: 0,
+                total: queries.length,
+                currentQuery: 'Starting...'
+            }
+        });
+
+        for (let i = 0; i < queries.length; i++) {
+            const query = queries[i];
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}`;
+
+            console.log(`Opening Google search ${i + 1}/${queries.length}: ${query.query}`);
+
+            // Update progress
+            await chrome.storage.local.set({
+                googleSearchProgress: {
+                    current: i,
+                    total: queries.length,
+                    currentQuery: query.query
+                }
+            });
+
+            // Open Google search in new tab
+            const tab = await chrome.tabs.create({
+                url: searchUrl,
+                active: false
+            });
+
+            // Wait for page to load
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            try {
+                // Extract search results
+                const results = await chrome.tabs.sendMessage(tab.id, {
+                    action: 'extract',
+                    searchQuery: query.query,
+                    platform: query.source
+                });
+
+                if (results && results.success && results.results && Array.isArray(results.results)) {
+                    console.log(`Extracted ${results.results.length} results for ${query.platform}`);
+
+                    // Store results with platform information
+                    const stored = await chrome.storage.local.get(['searchResults']);
+                    const existingResults = stored.searchResults || [];
+
+                    const newResults = results.results.map(result => ({
+                        ...result,
+                        platform: query.source,
+                        platformName: query.platform,
+                        searchQuery: query.query,
+                        topic: query.topic
+                    }));
+
+                    await chrome.storage.local.set({
+                        searchResults: [...existingResults, ...newResults]
+                    });
+                } else {
+                    console.log(`No results extracted from ${query.platform} - results:`, results);
+                }
+            } catch (extractError) {
+                console.error(`Error extracting results from ${query.platform}:`, extractError);
+            }
+
+            // Close the tab after extraction
+            try {
+                await chrome.tabs.remove(tab.id);
+            } catch (closeError) {
+                console.error(`Error closing tab:`, closeError);
+            }
+
+            // Small delay between searches to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Update final progress
+        await chrome.storage.local.set({
+            googleSearchProgress: {
+                current: queries.length,
+                total: queries.length,
+                currentQuery: 'Completed!'
+            }
+        });
+
+        // Show completion notification
+        const finalResults = await chrome.storage.local.get(['searchResults']);
+        const totalResults = finalResults.searchResults?.length || 0;
+
+        showNotification(
+            'Google Searches Completed',
+            `Completed ${queries.length} Google searches and extracted ${totalResults} total results. Switch to Extraction mode to process the URLs.`,
+            'basic'
+        );
+
+        console.log(`Completed Google searches. Total results: ${totalResults}`);
+
+    } catch (error) {
+        console.error('Error executing Google searches:', error);
+        showNotification(
+            'Google Search Error',
+            `Error occurred during Google searches: ${error.message}`,
+            'basic'
+        );
     }
 }
 
@@ -549,6 +751,13 @@ function extractRedditUrlsFromCSV(csvContent) {
 async function startDataExtractionProcess(urls, closeTabs, extractComments, extractMetadata) {
     let currentTab = null;
 
+    // Show notification that extraction has started
+    showNotification(
+        'Data Extraction Started',
+        `Starting extraction of ${urls.length} URLs from multiple platforms. You'll be notified if manual intervention is needed.`,
+        'basic'
+    );
+
     for (let i = 0; i < urls.length; i++) {
         try {
             // Check if extraction was stopped before processing each URL
@@ -654,44 +863,99 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
                         extractMetadata: extractMetadata
                     });
                 }
+            } catch (extractError) {
+                console.error(`Error extracting data from ${urls[i]}:`, extractError);
 
-                // Check if extraction was stopped after data extraction
-                const postExtractState = await chrome.storage.local.get(['dataExtraction']);
-                if (!postExtractState.dataExtraction.isRunning) {
-                    console.log('Extraction stopped after data extraction - terminating process');
-                    if (currentTab) {
-                        try {
-                            await chrome.tabs.remove(currentTab.id);
-                        } catch (closeError) {
-                            console.error(`Error closing tab ${currentTab.id}:`, closeError);
+                // Check if it's a CAPTCHA or manual intervention issue
+                if (extractError.message.includes('Could not establish connection') ||
+                    extractError.message.includes('Extension context invalidated')) {
+
+                    // Show notification for manual intervention
+                    showNotification(
+                        'Manual Intervention Required',
+                        `Please check the tab for ${platform} - may need to solve CAPTCHA or login. Click to open extension.`,
+                        'basic'
+                    );
+
+                    // Wait for user to resolve the issue
+                    await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+
+                    // Try to extract again
+                    try {
+                        if (platform === 'reddit') {
+                            results = await chrome.tabs.sendMessage(currentTab.id, {
+                                action: 'extractRedditData',
+                                extractComments: extractComments,
+                                extractMetadata: extractMetadata
+                            });
+                        } else if (platform === 'stackoverflow') {
+                            results = await chrome.tabs.sendMessage(currentTab.id, {
+                                action: 'extractStackOverflowData',
+                                extractComments: extractComments,
+                                extractMetadata: extractMetadata
+                            });
+                        } else if (platform === 'github') {
+                            results = await chrome.tabs.sendMessage(currentTab.id, {
+                                action: 'extractGitHubData',
+                                extractComments: extractComments,
+                                extractMetadata: extractMetadata
+                            });
+                        } else if (platform === 'devto') {
+                            results = await chrome.tabs.sendMessage(currentTab.id, {
+                                action: 'extractDevToData',
+                                extractComments: extractComments,
+                                extractMetadata: extractMetadata
+                            });
+                        } else if (platform === 'medium') {
+                            results = await chrome.tabs.sendMessage(currentTab.id, {
+                                action: 'extractMediumData',
+                                extractComments: extractComments,
+                                extractMetadata: extractMetadata
+                            });
                         }
+                    } catch (retryError) {
+                        console.error(`Retry failed for ${urls[i]}:`, retryError);
+                        results = null;
                     }
-                    return;
-                }
-
-                if (results && results.success) {
-                    const newData = {
-                        url: urls[i],
-                        platform: platform,
-                        data: results.data || results,
-                        extractedAt: new Date().toISOString()
-                    };
-
-                    // Add to extracted data and save immediately
-                    const updatedData = [...(postExtractState.dataExtraction.extractedData || []), newData];
-                    await chrome.storage.local.set({
-                        dataExtraction: {
-                            ...postExtractState.dataExtraction,
-                            extractedData: updatedData
-                        }
-                    });
-
-                    console.log(`Successfully extracted data from ${urls[i]} (${platform})`);
                 } else {
-                    console.log(`Failed to extract data from ${urls[i]} (${platform})`);
+                    results = null;
                 }
-            } catch (messageError) {
-                console.error(`Error sending message to tab ${currentTab.id}:`, messageError);
+            }
+
+            // Check if extraction was stopped after data extraction
+            const postExtractState = await chrome.storage.local.get(['dataExtraction']);
+            if (!postExtractState.dataExtraction.isRunning) {
+                console.log('Extraction stopped after data extraction - terminating process');
+                if (currentTab) {
+                    try {
+                        await chrome.tabs.remove(currentTab.id);
+                    } catch (closeError) {
+                        console.error(`Error closing tab ${currentTab.id}:`, closeError);
+                    }
+                }
+                return;
+            }
+
+            if (results && results.success) {
+                const newData = {
+                    url: urls[i],
+                    platform: platform,
+                    data: results.data || results,
+                    extractedAt: new Date().toISOString()
+                };
+
+                // Add to extracted data and save immediately
+                const updatedData = [...(postExtractState.dataExtraction.extractedData || []), newData];
+                await chrome.storage.local.set({
+                    dataExtraction: {
+                        ...postExtractState.dataExtraction,
+                        extractedData: updatedData
+                    }
+                });
+
+                console.log(`Successfully extracted data from ${urls[i]} (${platform})`);
+            } else {
+                console.log(`Failed to extract data from ${urls[i]} (${platform})`);
             }
 
             // Close tab if requested
@@ -740,6 +1004,13 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
         });
 
         console.log(`Data extraction completed. Extracted ${finalState.dataExtraction.extractedData.length} items.`);
+
+        // Show completion notification
+        showNotification(
+            'Data Extraction Completed',
+            `Successfully extracted ${finalState.dataExtraction.extractedData.length} items from ${urls.length} URLs. Switch to AI Analysis mode to analyze the data.`,
+            'basic'
+        );
     }
 }
 
@@ -807,7 +1078,7 @@ async function handleStopAndSave(sendResponse) {
                 'https://dev.to/*',
                 'https://medium.com/*'
             ];
-            
+
             for (const urlPattern of tabUrls) {
                 const tabs = await chrome.tabs.query({ url: urlPattern });
                 for (const tab of tabs) {

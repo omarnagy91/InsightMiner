@@ -10,7 +10,8 @@
     "downloads",
     "tabs",
     "contextMenus",
-    "sidePanel"
+    "sidePanel",
+    "notifications"
   ],
   "host_permissions": [
     "https://www.google.com/*",

@@ -1,11 +1,15 @@
-// Enhanced sidepanel script with mode switching and expanded AI analysis
+// Enhanced sidepanel script with modern interactions and improved UX
 document.addEventListener('DOMContentLoaded', function () {
-    // Mode switching elements
+    // Enhanced mode switching elements
     const modeSwitcher = document.querySelector('.mode-switcher');
     const modeOptions = document.querySelectorAll('.mode-option');
     const sourcesMode = document.getElementById('sourcesMode');
     const extractionMode = document.getElementById('extractionMode');
     const aiMode = document.getElementById('aiMode');
+
+    // Add keyboard navigation support
+    let currentModeIndex = 0;
+    const modes = ['sources', 'extraction', 'ai'];
 
     // Sources mode elements
     const selectedSourcesCount = document.getElementById('selectedSourcesCount');
@@ -17,8 +21,16 @@ document.addEventListener('DOMContentLoaded', function () {
         devto: document.getElementById('devtoCheckbox'),
         medium: document.getElementById('mediumCheckbox')
     };
+    const topicInput = document.getElementById('topicInput');
     const generateDorks = document.getElementById('generateDorks');
     const sourcesStatus = document.getElementById('sourcesStatus');
+
+    // Google search progress elements
+    const googleSearchProgress = document.getElementById('googleSearchProgress');
+    const googleProgressFill = document.getElementById('googleProgressFill');
+    const googleProgressText = document.getElementById('googleProgressText');
+    const googleProgressPercent = document.getElementById('googleProgressPercent');
+    const googleCurrentQuery = document.getElementById('googleCurrentQuery');
 
     // Extraction mode elements
     const totalUrls = document.getElementById('totalUrls');
@@ -28,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileName = document.getElementById('fileName');
     const urlCount = document.getElementById('urlCount');
     const sourceBreakdown = document.getElementById('sourceBreakdown');
+    const exportSearchResults = document.getElementById('exportSearchResults');
     const startExtraction = document.getElementById('startExtraction');
     const extractionStatus = document.getElementById('extractionStatus');
 
@@ -72,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const prosList = document.getElementById('prosList');
     const actionPlanText = document.getElementById('actionPlanText');
 
-    // Initialize sidepanel
+    // Initialize sidepanel with enhanced setup
     initializeSidepanel();
 
     // Event listeners
@@ -80,36 +93,95 @@ document.addEventListener('DOMContentLoaded', function () {
     setupSourcesMode();
     setupExtractionMode();
     setupAIMode();
+    setupTooltips();
+    setupKeyboardShortcuts();
 
-    // Mode switching functionality
+    // Enhanced mode switching functionality
     function setupModeSwitching() {
-        modeOptions.forEach(option => {
+        modeOptions.forEach((option, index) => {
             option.addEventListener('click', () => {
                 const mode = option.dataset.mode;
-                switchMode(mode);
+                switchMode(mode, index);
             });
+
+            // Add keyboard support
+            option.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const mode = option.dataset.mode;
+                    switchMode(mode, index);
+                }
+            });
+        });
+
+        // Add global keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case '1':
+                        e.preventDefault();
+                        switchMode('sources', 0);
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        switchMode('extraction', 1);
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        switchMode('ai', 2);
+                        break;
+                }
+            }
         });
     }
 
-    function switchMode(mode) {
-        // Update active mode option
-        modeOptions.forEach(option => {
-            option.classList.toggle('active', option.dataset.mode === mode);
-        });
-
-        // Show/hide content areas
-        sourcesMode.classList.toggle('active', mode === 'sources');
-        extractionMode.classList.toggle('active', mode === 'extraction');
-        aiMode.classList.toggle('active', mode === 'ai');
-
-        // Update body theme
-        if (mode === 'sources') {
-            document.body.className = 'sources-theme';
-        } else if (mode === 'extraction') {
-            document.body.className = 'extraction-theme';
-        } else if (mode === 'ai') {
-            document.body.className = 'ai-theme';
+    function switchMode(mode, index = null) {
+        // Update current mode index
+        if (index !== null) {
+            currentModeIndex = index;
         }
+
+        // Add smooth transition effect
+        const activeContent = document.querySelector('.content-area.active');
+        if (activeContent) {
+            activeContent.style.opacity = '0';
+            activeContent.style.transform = 'translateY(10px)';
+        }
+
+        setTimeout(() => {
+            // Update active mode option with enhanced animation
+            modeOptions.forEach((option, i) => {
+                const isActive = option.dataset.mode === mode;
+                option.classList.toggle('active', isActive);
+
+                // Add focus for accessibility
+                if (isActive) {
+                    option.focus();
+                }
+            });
+
+            // Show/hide content areas with animation
+            sourcesMode.classList.toggle('active', mode === 'sources');
+            extractionMode.classList.toggle('active', mode === 'extraction');
+            aiMode.classList.toggle('active', mode === 'ai');
+
+            // Update body theme with smooth transition
+            document.body.style.transition = 'background 0.3s ease';
+            if (mode === 'sources') {
+                document.body.className = 'sources-theme';
+            } else if (mode === 'extraction') {
+                document.body.className = 'extraction-theme';
+            } else if (mode === 'ai') {
+                document.body.className = 'ai-theme';
+            }
+
+            // Animate in the new content
+            const newActiveContent = document.querySelector('.content-area.active');
+            if (newActiveContent) {
+                newActiveContent.style.opacity = '1';
+                newActiveContent.style.transform = 'translateY(0)';
+            }
+        }, 150);
     }
 
     // Sources mode setup
@@ -125,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Extraction mode setup
     function setupExtractionMode() {
         csvFileInput.addEventListener('change', handleFileSelect);
+        exportSearchResults.addEventListener('click', exportSearchResultsToCSV);
         startExtraction.addEventListener('click', startExtractionProcess);
         stopExtraction.addEventListener('click', stopExtractionProcess);
     }
@@ -153,13 +226,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 'dataExtraction',
                 'aiAnalysis',
                 'per_post_analysis',
-                'aggregated_analysis'
+                'aggregated_analysis',
+                'searchResults'
             ]);
 
             updateSelectedSourcesCount();
             updateSourcesStats(stored.selectedSources || ['reddit']);
             updateExtractionStatus(stored.dataExtraction || {});
             updateAIStatus(stored.aiAnalysis || {}, stored.per_post_analysis || [], stored.aggregated_analysis || null);
+
+            // Show export button if we have search results
+            if (stored.searchResults && stored.searchResults.length > 0) {
+                exportSearchResults.style.display = 'block';
+            }
+
+            // Check for ongoing Google search progress
+            if (stored.googleSearchProgress) {
+                const progress = stored.googleSearchProgress;
+                if (progress.current < progress.total) {
+                    showGoogleSearchProgress(progress.total);
+                    updateGoogleSearchProgress(progress.current, progress.total, progress.currentQuery);
+                }
+            }
 
         } catch (error) {
             console.error('Error initializing sidepanel:', error);
@@ -193,8 +281,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Generate search queries for selected sources
     async function generateSearchQueries() {
-        const topic = prompt('Enter a topic or idea for analysis (e.g., "AI tools for developers"):');
-        if (!topic) return;
+        const topic = topicInput.value.trim();
+        if (!topic) {
+            showSourcesStatus('Please enter a topic for analysis', 'error');
+            topicInput.focus();
+            return;
+        }
 
         const selectedSources = [];
         Object.entries(sourceCheckboxes).forEach(([source, checkbox]) => {
@@ -219,17 +311,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 sources: selectedSources
             });
 
-            if (response.success) {
-                showSourcesStatus(`Generated ${selectedSources.length} search queries! Switch to Extraction mode to use them.`, 'success');
+            if (response && response.success) {
+                showSourcesStatus(`Generated ${selectedSources.length} search queries! Now executing Google searches...`, 'success');
+                // Store the generated queries
+                await chrome.storage.local.set({ generatedQueries: response.queries });
+
+                // Show Google search progress
+                showGoogleSearchProgress(selectedSources.length);
+
                 // Switch to extraction mode
                 switchMode('extraction');
             } else {
-                throw new Error(response.error || 'Failed to generate search queries');
+                throw new Error(response?.error || 'Failed to generate search queries');
             }
 
         } catch (error) {
             console.error('Error generating search queries:', error);
-            showSourcesStatus('Error: ' + error.message, 'error');
+            if (error.message.includes('Extension context invalidated')) {
+                showSourcesStatus('Extension needs to be reloaded. Please refresh the page and try again.', 'error');
+            } else {
+                showSourcesStatus('Error: ' + error.message, 'error');
+            }
         } finally {
             generateDorks.disabled = false;
             generateDorks.innerHTML = '<div class="mode-icon sources-icon"></div>Generate AI-Powered Search Queries';
@@ -248,6 +350,97 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             extractionStatusSpan.textContent = 'Ready';
         }
+    }
+
+    // Export search results to CSV
+    async function exportSearchResultsToCSV() {
+        try {
+            exportSearchResults.disabled = true;
+            exportSearchResults.innerHTML = '<div class="loading"></div>Exporting...';
+
+            const stored = await chrome.storage.local.get(['searchResults']);
+            const results = stored.searchResults || [];
+
+            if (results.length === 0) {
+                showExtractionStatus('No search results to export', 'error');
+                return;
+            }
+
+            // Generate CSV content
+            const csvContent = generateCSV(results);
+
+            // Create data URL for download
+            const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
+
+            // Use Chrome downloads API to save file
+            await chrome.downloads.download({
+                url: dataUrl,
+                filename: `search_results_${new Date().toISOString().split('T')[0]}.csv`,
+                conflictAction: 'overwrite',
+                saveAs: true
+            });
+
+            showExtractionStatus(`Exported ${results.length} search results to Downloads folder`, 'success');
+
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            showExtractionStatus('Error exporting CSV: ' + error.message, 'error');
+        } finally {
+            exportSearchResults.disabled = false;
+            exportSearchResults.innerHTML = '<div class="mode-icon extraction-icon"></div>Export Search Results to CSV';
+        }
+    }
+
+    // Generate CSV content from results
+    function generateCSV(results) {
+        if (results.length === 0) return '';
+
+        // CSV headers
+        const headers = [
+            'Title',
+            'URL',
+            'Snippet',
+            'Domain',
+            'Position',
+            'Search Query',
+            'Platform',
+            'Platform Name',
+            'Topic',
+            'Timestamp',
+            'Source'
+        ];
+
+        // Escape CSV field
+        function escapeCSVField(field) {
+            if (field === null || field === undefined) return '';
+            const str = String(field);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+
+        // Create CSV rows
+        const csvRows = [headers.join(',')];
+
+        results.forEach(result => {
+            const row = [
+                escapeCSVField(result.title),
+                escapeCSVField(result.url),
+                escapeCSVField(result.snippet),
+                escapeCSVField(result.domain),
+                escapeCSVField(result.position),
+                escapeCSVField(result.searchQuery),
+                escapeCSVField(result.platform),
+                escapeCSVField(result.platformName),
+                escapeCSVField(result.topic),
+                escapeCSVField(result.timestamp),
+                escapeCSVField(result.source)
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        return csvRows.join('\n');
     }
 
     // Handle file selection (Extraction mode)
@@ -388,19 +581,21 @@ document.addEventListener('DOMContentLoaded', function () {
         extractionProgress.style.display = 'none';
     }
 
-    // Update progress display
+    // Enhanced progress display with animations
     function updateProgress(extraction) {
         const progress = extraction.progress || 0;
         const total = extraction.total || 0;
-        const percent = total > 0 ? Math.round((progress / total) * 100) : 0;
+        const currentTask = extraction.currentUrl ? `Current: ${extraction.currentUrl}` : null;
 
-        progressFill.style.width = `${percent}%`;
-        progressText.textContent = `${progress} / ${total}`;
-        progressPercent.textContent = `${percent}%`;
-
-        if (extraction.currentUrl) {
-            currentUrl.textContent = `Current: ${extraction.currentUrl}`;
-        }
+        updateProgressWithAnimation(
+            extractionProgress,
+            progressFill,
+            progressText,
+            progressPercent,
+            progress,
+            total,
+            currentTask
+        );
     }
 
     // Stop extraction
@@ -642,19 +837,21 @@ document.addEventListener('DOMContentLoaded', function () {
         updateAIAnalysisProgress(analysis);
     }
 
-    // Update AI analysis progress display
+    // Enhanced AI analysis progress display
     function updateAIAnalysisProgress(analysis) {
         const progress = analysis.progress || 0;
         const total = analysis.total || 0;
-        const percent = total > 0 ? Math.round((progress / total) * 100) : 0;
+        const currentTask = analysis.currentTask ? `Current: ${analysis.currentTask}` : null;
 
-        aiProgressFill.style.width = `${percent}%`;
-        aiProgressText.textContent = `${progress} / ${total}`;
-        aiProgressPercent.textContent = `${percent}%`;
-
-        if (analysis.currentTask) {
-            aiCurrentTask.textContent = `Current: ${analysis.currentTask}`;
-        }
+        updateProgressWithAnimation(
+            aiProgress,
+            aiProgressFill,
+            aiProgressText,
+            aiProgressPercent,
+            progress,
+            total,
+            currentTask
+        );
     }
 
     // Show enhanced analysis results
@@ -729,37 +926,107 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show status in Sources mode
-    function showSourcesStatus(message, type) {
-        sourcesStatus.textContent = message;
-        sourcesStatus.className = `status ${type}`;
-        sourcesStatus.style.display = 'block';
-
-        setTimeout(() => {
-            sourcesStatus.style.display = 'none';
-        }, 3000);
+    // Show Google search progress
+    function showGoogleSearchProgress(totalQueries) {
+        googleSearchProgress.style.display = 'block';
+        googleProgressFill.style.width = '0%';
+        googleProgressText.textContent = `0 / ${totalQueries}`;
+        googleProgressPercent.textContent = '0%';
+        googleCurrentQuery.textContent = 'Starting Google searches...';
     }
 
-    // Show status in Extraction mode
-    function showExtractionStatus(message, type) {
-        extractionStatus.textContent = message;
-        extractionStatus.className = `status ${type}`;
-        extractionStatus.style.display = 'block';
+    // Enhanced Google search progress tracking
+    function updateGoogleSearchProgress(current, total, currentQuery) {
+        const currentTask = currentQuery ? `Current: ${currentQuery}` : 'Processing...';
 
-        setTimeout(() => {
-            extractionStatus.style.display = 'none';
-        }, 5000);
+        updateProgressWithAnimation(
+            googleSearchProgress,
+            googleProgressFill,
+            googleProgressText,
+            googleProgressPercent,
+            current,
+            total,
+            currentTask
+        );
     }
 
-    // Show status in AI mode
-    function showAIStatus(message, type) {
-        aiStatus.textContent = message;
-        aiStatus.className = `status ${type}`;
-        aiStatus.style.display = 'block';
+    // Hide Google search progress
+    function hideGoogleSearchProgress() {
+        googleSearchProgress.style.display = 'none';
+    }
 
-        setTimeout(() => {
-            aiStatus.style.display = 'none';
-        }, 5000);
+    // Enhanced status display functions with animations
+    function showSourcesStatus(message, type, duration = 3000) {
+        showStatus(sourcesStatus, message, type, duration);
+    }
+
+    function showExtractionStatus(message, type, duration = 5000) {
+        showStatus(extractionStatus, message, type, duration);
+    }
+
+    function showAIStatus(message, type, duration = 5000) {
+        showStatus(aiStatus, message, type, duration);
+    }
+
+    function showStatus(statusElement, message, type, duration) {
+        // Clear any existing timeout
+        if (statusElement.timeoutId) {
+            clearTimeout(statusElement.timeoutId);
+        }
+
+        // Update content and styling
+        statusElement.textContent = message;
+        statusElement.className = `status ${type}`;
+
+        // Add enhanced animation
+        statusElement.style.display = 'block';
+        statusElement.style.opacity = '0';
+        statusElement.style.transform = 'translateY(-10px)';
+
+        // Animate in
+        requestAnimationFrame(() => {
+            statusElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            statusElement.style.opacity = '1';
+            statusElement.style.transform = 'translateY(0)';
+        });
+
+        // Auto-hide with animation
+        statusElement.timeoutId = setTimeout(() => {
+            statusElement.style.opacity = '0';
+            statusElement.style.transform = 'translateY(-10px)';
+
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+                statusElement.timeoutId = null;
+            }, 300);
+        }, duration);
+    }
+
+    // Enhanced progress tracking with real-time updates
+    function updateProgressWithAnimation(progressElement, progressFill, progressText, progressPercent, current, total, currentTask = null) {
+        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+
+        // Animate progress bar
+        progressFill.style.width = `${percent}%`;
+        progressText.textContent = `${current} / ${total}`;
+        progressPercent.textContent = `${percent}%`;
+
+        // Update current task with animation
+        if (currentTask && progressElement.querySelector('.current-task')) {
+            const taskElement = progressElement.querySelector('.current-task');
+            taskElement.style.opacity = '0';
+            setTimeout(() => {
+                taskElement.textContent = currentTask;
+                taskElement.style.opacity = '1';
+            }, 150);
+        }
+
+        // Add pulse effect for active progress
+        if (current < total) {
+            progressFill.classList.add('pulse');
+        } else {
+            progressFill.classList.remove('pulse');
+        }
     }
 
     // Listen for storage changes to update stats in real-time
@@ -767,6 +1034,26 @@ document.addEventListener('DOMContentLoaded', function () {
         if (namespace === 'local') {
             if (changes.selectedSources) {
                 updateSourcesStats(changes.selectedSources.newValue);
+            }
+
+            if (changes.searchResults) {
+                const results = changes.searchResults.newValue || [];
+                showSourcesStatus(`Google searches completed! Found ${results.length} total results.`, 'success');
+
+                // Show export button if we have results
+                if (results.length > 0) {
+                    exportSearchResults.style.display = 'block';
+                }
+
+                // Hide Google search progress when completed
+                hideGoogleSearchProgress();
+            }
+
+            if (changes.googleSearchProgress) {
+                const progress = changes.googleSearchProgress.newValue;
+                if (progress) {
+                    updateGoogleSearchProgress(progress.current, progress.total, progress.currentQuery);
+                }
             }
 
             if (changes.dataExtraction) {
@@ -799,4 +1086,115 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    // Enhanced tooltip functionality
+    function setupTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-tooltip]');
+
+        tooltipElements.forEach(element => {
+            element.addEventListener('mouseenter', showTooltip);
+            element.addEventListener('mouseleave', hideTooltip);
+        });
+    }
+
+    function showTooltip(e) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip-popup';
+        tooltip.textContent = e.target.getAttribute('data-tooltip');
+        tooltip.style.cssText = `
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        `;
+
+        document.body.appendChild(tooltip);
+
+        const rect = e.target.getBoundingClientRect();
+        tooltip.style.left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2 + 'px';
+        tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+
+        requestAnimationFrame(() => {
+            tooltip.style.opacity = '1';
+        });
+
+        e.target.tooltipElement = tooltip;
+    }
+
+    function hideTooltip(e) {
+        if (e.target.tooltipElement) {
+            e.target.tooltipElement.style.opacity = '0';
+            setTimeout(() => {
+                if (e.target.tooltipElement && e.target.tooltipElement.parentNode) {
+                    e.target.tooltipElement.parentNode.removeChild(e.target.tooltipElement);
+                }
+                e.target.tooltipElement = null;
+            }, 200);
+        }
+    }
+
+    // Enhanced keyboard shortcuts
+    function setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Only handle shortcuts when not in input fields
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            switch (e.key) {
+                case 'Escape':
+                    // Close any open modals or clear status messages
+                    document.querySelectorAll('.status').forEach(status => {
+                        if (status.style.display === 'block') {
+                            status.style.display = 'none';
+                        }
+                    });
+                    break;
+                case 'r':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        // Refresh current mode data
+                        location.reload();
+                    }
+                    break;
+            }
+        });
+    }
+
+    // Enhanced error handling with user-friendly messages
+    function handleError(error, context = '') {
+        console.error(`Error in ${context}:`, error);
+
+        let userMessage = 'An unexpected error occurred. Please try again.';
+
+        if (error.message.includes('Extension context invalidated')) {
+            userMessage = 'Extension needs to be reloaded. Please refresh the page and try again.';
+        } else if (error.message.includes('API key')) {
+            userMessage = 'Please check your OpenAI API key in the extension options.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            userMessage = 'Network error. Please check your internet connection and try again.';
+        }
+
+        // Show error in current active mode
+        const activeMode = document.querySelector('.content-area.active');
+        if (activeMode.id === 'sourcesMode') {
+            showSourcesStatus(userMessage, 'error', 8000);
+        } else if (activeMode.id === 'extractionMode') {
+            showExtractionStatus(userMessage, 'error', 8000);
+        } else if (activeMode.id === 'aiMode') {
+            showAIStatus(userMessage, 'error', 8000);
+        }
+    }
+
+    // Add performance monitoring
+    function logPerformance(operation, startTime) {
+        const duration = performance.now() - startTime;
+        console.log(`${operation} completed in ${duration.toFixed(2)}ms`);
+    }
 });
