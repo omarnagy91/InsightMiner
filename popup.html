@@ -10,8 +10,8 @@
         }
 
         body {
-            width: 400px;
-            min-height: 500px;
+            width: 420px;
+            min-height: 600px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -32,9 +32,10 @@
         }
 
         .header h1 {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         /* Toggle Switcher */
@@ -539,35 +540,67 @@
                 </div>
             </div>
 
-            <div class="reddit-menu">
-                <h3>🤖 AI Analysis</h3>
-                <p style="margin-bottom: 15px; font-size: 13px; opacity: 0.9;">
-                    Analyze extracted Reddit data with OpenAI to identify AI tool demand patterns and MVP opportunities.
-                </p>
-                
-                <div class="reddit-options">
-                    <label>
-                        <input type="checkbox" id="includeComments" checked>
-                        Include comments in analysis
-                    </label>
-                    <label>
-                        <input type="checkbox" id="generateMVP" checked>
-                        Generate MVP recommendations
-                    </label>
-                </div>
-                
-                <div class="reddit-buttons">
-                    <button id="startAIAnalysis" class="btn btn-primary">
-                        <div class="mode-icon ai-icon"></div>
-                        Start AI Analysis
-                    </button>
-                    <button id="viewResults" class="btn btn-secondary" style="display: none;">
-                        View Analysis Results
-                    </button>
-                    <button id="exportAnalysis" class="btn btn-secondary" style="display: none;">
-                        Export Analysis
-                    </button>
-                </div>
+                <div class="reddit-menu">
+                    <h3>🤖 AI Analysis</h3>
+                    <p style="margin-bottom: 15px; font-size: 13px; opacity: 0.9;">
+                        Analyze extracted Reddit data with OpenAI to identify AI tool demand patterns and MVP opportunities.
+                    </p>
+                    
+                    <div class="csv-files">
+                        <h4>Select data source for analysis:</h4>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin: 10px 0;">
+                                <input type="radio" name="dataSource" value="extracted" checked>
+                                Use extracted Reddit data (from Reddit mode)
+                            </label>
+                            <label style="display: block; margin: 10px 0;">
+                                <input type="radio" name="dataSource" value="file">
+                                Upload JSON file
+                            </label>
+                            <label style="display: block; margin: 10px 0;">
+                                <input type="radio" name="dataSource" value="report">
+                                Open previously exported report
+                            </label>
+                        </div>
+                        <input type="file" id="jsonFileInput" accept=".json" class="file-input" style="display: none;">
+                        <input type="file" id="reportFileInput" accept=".json" class="file-input" style="display: none;">
+                        <div class="file-info" id="jsonFileInfo" style="display: none;">
+                            <p>Selected file: <span id="jsonFileName"></span></p>
+                            <p>Posts found: <span id="jsonPostCount">0</span></p>
+                        </div>
+                        <div class="file-info" id="reportFileInfo" style="display: none;">
+                            <p>Selected report: <span id="reportFileName"></span></p>
+                            <p>Report type: <span id="reportType">AI Analysis Report</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="reddit-options">
+                        <label>
+                            <input type="checkbox" id="includeComments" checked>
+                            Include comments in analysis
+                        </label>
+                        <label>
+                            <input type="checkbox" id="generateMVP" checked>
+                            Generate MVP recommendations
+                        </label>
+                    </div>
+                    
+                    <div class="reddit-buttons">
+                        <button id="startAIAnalysis" class="btn btn-primary">
+                            <div class="mode-icon ai-icon"></div>
+                            Start AI Analysis
+                        </button>
+                        <button id="openReport" class="btn btn-primary" style="display: none;">
+                            <div class="mode-icon ai-icon"></div>
+                            Open Report in Analysis Tab
+                        </button>
+                        <button id="viewResults" class="btn btn-secondary" style="display: none;">
+                            View Analysis Results
+                        </button>
+                        <button id="exportAnalysis" class="btn btn-secondary" style="display: none;">
+                            Export Analysis
+                        </button>
+                    </div>
                 
                 <div id="aiStatus" class="status"></div>
                 

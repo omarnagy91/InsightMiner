@@ -637,11 +637,20 @@
                             <input type="radio" name="dataSource" value="file">
                             Upload JSON file
                         </label>
+                        <label style="display: block; margin: 10px 0;">
+                            <input type="radio" name="dataSource" value="report">
+                            Open previously exported report
+                        </label>
                     </div>
                     <input type="file" id="jsonFileInput" accept=".json" class="file-input" style="display: none;">
+                    <input type="file" id="reportFileInput" accept=".json" class="file-input" style="display: none;">
                     <div class="file-info" id="jsonFileInfo" style="display: none;">
                         <p>Selected file: <span id="jsonFileName"></span></p>
                         <p>Posts found: <span id="jsonPostCount">0</span></p>
+                    </div>
+                    <div class="file-info" id="reportFileInfo" style="display: none;">
+                        <p>Selected report: <span id="reportFileName"></span></p>
+                        <p>Report type: <span id="reportType">AI Analysis Report</span></p>
                     </div>
                 </div>
                 
@@ -660,6 +669,10 @@
                     <button id="startAIAnalysis" class="btn btn-primary">
                         <div class="mode-icon ai-icon"></div>
                         Start AI Analysis
+                    </button>
+                    <button id="openReport" class="btn btn-primary" style="display: none;">
+                        <div class="mode-icon ai-icon"></div>
+                        Open Report in Analysis Tab
                     </button>
                     <button id="viewResults" class="btn btn-secondary" style="display: none;">
                         View Detailed Results

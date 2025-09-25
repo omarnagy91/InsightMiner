@@ -52,7 +52,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const jsonFileInfo = document.getElementById('jsonFileInfo');
     const jsonFileName = document.getElementById('jsonFileName');
     const jsonPostCount = document.getElementById('jsonPostCount');
+    const reportFileInput = document.getElementById('reportFileInput');
+    const reportFileInfo = document.getElementById('reportFileInfo');
+    const reportFileName = document.getElementById('reportFileName');
+    const reportType = document.getElementById('reportType');
     const dataSourceRadios = document.querySelectorAll('input[name="dataSource"]');
+    const openReportBtn = document.getElementById('openReport');
 
     // Enhanced AI results elements
     const topToolsList = document.getElementById('topToolsList');
@@ -123,6 +128,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // File selection setup
         jsonFileInput.addEventListener('change', handleJSONFileSelect);
+        reportFileInput.addEventListener('change', handleReportFileSelect);
+        openReportBtn.addEventListener('click', openReportInAnalysisTab);
         dataSourceRadios.forEach(radio => {
             radio.addEventListener('change', handleDataSourceChange);
         });
@@ -499,11 +506,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Handle data source change
     function handleDataSourceChange() {
         const selectedSource = document.querySelector('input[name="dataSource"]:checked').value;
+
+        // Hide all file inputs and info sections
+        jsonFileInput.style.display = 'none';
+        jsonFileInfo.style.display = 'none';
+        reportFileInput.style.display = 'none';
+        reportFileInfo.style.display = 'none';
+        openReportBtn.style.display = 'none';
+
         if (selectedSource === 'file') {
             jsonFileInput.style.display = 'block';
-        } else {
-            jsonFileInput.style.display = 'none';
-            jsonFileInfo.style.display = 'none';
+        } else if (selectedSource === 'report') {
+            reportFileInput.style.display = 'block';
         }
     }
 
@@ -540,6 +554,64 @@ document.addEventListener('DOMContentLoaded', function () {
             reader.readAsText(file);
         } else {
             showAIStatus('Please select a valid JSON file', 'error');
+        }
+    }
+
+    // Handle report file selection
+    function handleReportFileSelect(event) {
+        const file = event.target.files[0];
+        if (file && file.type === 'application/json') {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const reportData = JSON.parse(e.target.result);
+
+                    // Validate that this is an AI analysis report
+                    if (reportData.aggregated_analysis || reportData.per_post_analysis) {
+                        reportFileName.textContent = file.name;
+                        reportType.textContent = 'AI Analysis Report';
+                        reportFileInfo.style.display = 'block';
+                        openReportBtn.style.display = 'block';
+
+                        // Store the report data for opening
+                        window.selectedReportData = reportData;
+                    } else {
+                        showAIStatus('Invalid report file. Please select a valid AI analysis report.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error parsing report file:', error);
+                    showAIStatus('Error parsing report file. Please ensure it\'s a valid JSON file.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            showAIStatus('Please select a valid JSON report file', 'error');
+        }
+    }
+
+    // Open report in analysis tab
+    async function openReportInAnalysisTab() {
+        if (!window.selectedReportData) {
+            showAIStatus('Please select a report file first', 'error');
+            return;
+        }
+
+        try {
+            // Store the report data in browser storage temporarily
+            await chrome.storage.local.set({
+                'temp_report_data': window.selectedReportData,
+                'report_source': 'file_upload'
+            });
+
+            // Open AI analysis tab
+            chrome.tabs.create({
+                url: chrome.runtime.getURL('ai_analysis.html')
+            });
+
+            showAIStatus('Opening report in analysis tab...', 'success');
+        } catch (error) {
+            console.error('Error opening report:', error);
+            showAIStatus('Error opening report: ' + error.message, 'error');
         }
     }
 
@@ -665,8 +737,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // View analysis results
     function viewAnalysisResults() {
-        // This could open a new tab with detailed results
-        showAIStatus('Opening detailed results...', 'success');
+        try {
+            // Open AI analysis in a new tab
+            chrome.tabs.create({
+                url: chrome.runtime.getURL('ai_analysis.html')
+            });
+            showAIStatus('Opening detailed results in new tab...', 'success');
+        } catch (error) {
+            console.error('Error opening analysis tab:', error);
+            showAIStatus('Error opening analysis tab: ' + error.message, 'error');
+        }
     }
 
     // Export analysis results

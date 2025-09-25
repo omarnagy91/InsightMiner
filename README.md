@@ -39,6 +39,11 @@ A powerful Chrome extension that scrapes Reddit posts, analyzes them with OpenAI
 - **Emotional driver analysis**: Understand user motivations
 - **Action plan generation**: 24-hour implementation roadmap
 - **Enhanced results display**: Detailed grid layout with categorized insights
+- **Full-screen analysis tab**: Open detailed results in a dedicated browser tab
+- **Interactive statistics**: Real-time metrics and confidence scores
+- **Export capabilities**: JSON export with full analysis data
+- **Share functionality**: Copy analysis summaries to clipboard
+- **Report loading**: Open previously exported reports in the analysis tab
 - **API key management**: Secure local storage of OpenAI credentials
 
 ### 📊 Advanced Data Management
@@ -100,7 +105,8 @@ A powerful Chrome extension that scrapes Reddit posts, analyzes them with OpenAI
 5. **Click "Start AI Analysis"**
 6. **Monitor progress** with real-time analysis tracking
 7. **View results** with top requested tools and MVP recommendations
-8. **Export analysis** to JSON for further processing
+8. **Click "View Detailed Results"** to open the full-screen analysis tab
+9. **Export analysis** to JSON for further processing
 
 ### 🔑 AI Analysis Setup
 
@@ -116,6 +122,33 @@ A powerful Chrome extension that scrapes Reddit posts, analyzes them with OpenAI
    - Click "Save API Key"
 
 3. **Security Note**: Your API key is stored locally and never shared. For production use, consider using a backend proxy.
+
+### 🖥️ AI Analysis Tab - Full-Screen Results
+
+The AI Analysis Tab provides a comprehensive, full-screen view of your analysis results with enhanced visualizations and export capabilities:
+
+#### Features:
+- **📊 Interactive Statistics Dashboard**: Real-time metrics including posts analyzed, unique tools identified, MVP count, and average confidence scores
+- **🎯 Categorized Results**: Organized display of top requested tools, MVP recommendations, common issues, and praised features
+- **📋 Detailed Action Plan**: Step-by-step 24-hour implementation roadmap with clear priorities
+- **📤 Advanced Export Options**: 
+  - Full JSON export with complete analysis data
+  - PDF export (coming soon)
+  - Shareable summary for team collaboration
+- **🔄 Real-time Updates**: Automatically refreshes when new analysis data is available
+- **📱 Responsive Design**: Optimized for all screen sizes and devices
+
+#### How to Access:
+1. Complete an AI analysis using the extension sidebar
+2. Click "View Detailed Results" button in the AI Analysis mode
+3. A new browser tab will open with the full analysis interface
+4. Use the export and share features to distribute insights
+
+#### Opening Previously Exported Reports:
+1. In the AI Analysis mode, select "Open previously exported report"
+2. Click "Choose File" and select a previously exported JSON report
+3. Click "Open Report in Analysis Tab" to view the report in full-screen
+4. The report will load with all original analysis data and visualizations
 
 ### 🎨 Interface Features
 
@@ -137,9 +170,14 @@ chrome-extractor/
 ├── background.js          # Background service worker with AI analysis pipeline
 ├── content-google.js      # Google search results extraction
 ├── content-reddit.js      # Reddit content extraction
+├── popup.html             # Enhanced popup interface (fallback)
+├── popup.js               # Popup functionality
 ├── sidepanel.html         # Modern three-mode sidebar interface
 ├── sidepanel.js           # Enhanced sidebar with AI analysis
+├── ai_analysis.html       # Full-screen AI analysis results page
+├── ai_analysis.js         # AI analysis tab functionality
 ├── options.html           # OpenAI API key management page
+├── options.js             # Options page functionality
 ├── icons/                 # Extension icons (16px, 32px, 48px, 128px)
 ├── README.md              # This file
 └── INSTALLATION.md        # Installation guide
