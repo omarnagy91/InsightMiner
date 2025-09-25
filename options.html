@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Reddit AI Demand Miner - API Key Settings</title>
+    <title>AI Demand Intelligence Miner - Settings</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -68,6 +68,58 @@
             outline: none;
             border-color: rgba(255, 255, 255, 0.6);
             background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-select option {
+            background: #333;
+            color: white;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-help {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
         }
         
         .btn {
@@ -139,7 +191,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔑 API Key Settings</h1>
+        <h1>⚙️ Extension Settings</h1>
         
         <div class="warning">
             ⚠️ <strong>Security Warning:</strong> This extension stores your OpenAI API key locally in your browser. 
@@ -150,8 +202,31 @@
             <label for="key">OpenAI API Key:</label>
             <input id="key" type="password" placeholder="sk-..." />
         </div>
+
+        <div class="form-group">
+            <label for="model">AI Model:</label>
+            <select id="model" class="form-select">
+                <option value="gpt-4o">GPT-4o (Recommended)</option>
+                <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="searchPrompt">Search Query Generation Prompt:</label>
+            <textarea id="searchPrompt" class="form-textarea" rows="4" placeholder="Enter custom prompt for generating search queries..."></textarea>
+            <small class="form-help">This prompt will be used to generate Google search queries for each selected platform.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="analysisPrompt">Analysis Prompt:</label>
+            <textarea id="analysisPrompt" class="form-textarea" rows="4" placeholder="Enter custom prompt for AI analysis..."></textarea>
+            <small class="form-help">This prompt will be used to analyze extracted data and identify demand patterns.</small>
+        </div>
         
-        <button id="save" class="btn">Save API Key</button>
+        <button id="save" class="btn">Save Settings</button>
+        <button id="reset" class="btn btn-secondary">Reset to Defaults</button>
         
         <div id="status" class="status"></div>
         
@@ -170,7 +245,9 @@
                 <li>Your key is stored locally and never shared</li>
                 <li>You can regenerate your key anytime from OpenAI's dashboard</li>
                 <li>Make sure you have sufficient credits in your OpenAI account</li>
-                <li>The extension uses GPT-4 for analysis (adjustable in code)</li>
+                <li>Choose the AI model that best fits your needs and budget</li>
+                <li>Customize prompts to focus on specific aspects of your analysis</li>
+                <li>Select multiple data sources for comprehensive insights</li>
             </ul>
         </div>
     </div>

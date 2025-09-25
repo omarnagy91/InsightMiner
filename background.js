@@ -1,5 +1,5 @@
-// Background script for Reddit AI Demand Miner
-const MODEL = "gpt-4o"; // Using GPT-4o for better analysis
+// Background script for AI Demand Intelligence Miner
+let MODEL = "gpt-4o"; // Default model, can be changed in settings
 
 // ---- Structured Output schemas (OpenAI "Structured Outputs") ----
 const PER_POST_SCHEMA = {
@@ -35,7 +35,7 @@ const AGG_SCHEMA = {
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('Reddit AI Demand Miner installed');
+    console.log('AI Demand Intelligence Miner installed');
 
     // Set up side panel behavior
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
@@ -44,12 +44,13 @@ chrome.runtime.onInstalled.addListener(() => {
 
     // Initialize storage
     chrome.storage.local.set({
+        selectedSources: ['reddit'],
         searchResults: [],
         extractionStats: {
             totalExtracted: 0,
             lastExtraction: null
         },
-        redditExtraction: {
+        dataExtraction: {
             isRunning: false,
             currentTask: null,
             progress: 0,
@@ -79,12 +80,78 @@ async function getKey() {
     });
 }
 
-async function openaiJSON({ system, user, schema }) {
+async function getModel() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['AI_MODEL'], (result) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result.AI_MODEL || MODEL);
+            }
+        });
+    });
+}
+
+async function getSearchPrompt() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['SEARCH_PROMPT'], (result) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result.SEARCH_PROMPT || getDefaultSearchPrompt());
+            }
+        });
+    });
+}
+
+async function getAnalysisPrompt() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['ANALYSIS_PROMPT'], (result) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result.ANALYSIS_PROMPT || getDefaultAnalysisPrompt());
+            }
+        });
+    });
+}
+
+function getDefaultSearchPrompt() {
+    return `You are an expert at creating Google search queries to find relevant discussions about AI tools and productivity software.
+
+For the topic "{topic}" on {platform}, create a Google search query that will find:
+- User discussions, questions, and feedback
+- Problems people are facing
+- Tools they're looking for
+- Feature requests and suggestions
+
+The query should be specific to {platform} and use appropriate search operators.
+
+Return only the search query, nothing else.`;
+}
+
+function getDefaultAnalysisPrompt() {
+    return `You are a product researcher analyzing discussions about AI tools and productivity software. Extract:
+- Requested AI tools/tasks (what people want built)
+- Issues/problems they're facing
+- Pros/benefits they mention
+- Emotional drivers (frustration, excitement, etc.)
+- Overall sentiment
+- Supporting quotes (max 5, under 200 chars each)
+- MVP ideas based on the discussion
+
+Be concise, non-speculative, and focus on actionable insights.`;
+}
+
+async function openaiJSON({ system, user, schema, model = null }) {
     const apiKey = await getKey();
     if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
+    // Get model from settings or use default
+    const modelToUse = model || await getModel();
+
     const body = {
-        model: MODEL,
+        model: modelToUse,
         messages: [
             { role: "system", content: system },
             { role: "user", content: user }
@@ -260,11 +327,93 @@ ${JSON.stringify(summary, null, 2)}`;
     return agg;
 }
 
+// ---- Search Query Generation ----
+async function generateSearchQueries(topic, sources) {
+    try {
+        const searchPrompt = await getSearchPrompt();
+        const queries = [];
+
+        for (const source of sources) {
+            const platformName = getPlatformDisplayName(source);
+            const systemPrompt = searchPrompt.replace('{platform}', platformName);
+            const userPrompt = `Topic: ${topic}`;
+
+            const query = await openaiText({ system: systemPrompt, user: userPrompt });
+            queries.push({
+                source: source,
+                platform: platformName,
+                query: query.trim(),
+                topic: topic
+            });
+        }
+
+        // Save generated queries
+        await chrome.storage.local.set({
+            generatedQueries: queries,
+            lastQueryGeneration: new Date().toISOString()
+        });
+
+        return queries;
+    } catch (error) {
+        console.error('Error generating search queries:', error);
+        throw error;
+    }
+}
+
+async function openaiText({ system, user }) {
+    const apiKey = await getKey();
+    if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+
+    const modelToUse = await getModel();
+
+    const body = {
+        model: modelToUse,
+        messages: [
+            { role: "system", content: system },
+            { role: "user", content: user }
+        ],
+        temperature: 0.3
+    };
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`OpenAI error ${res.status}: ${errorText}`);
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+}
+
+function getPlatformDisplayName(source) {
+    const names = {
+        'reddit': 'Reddit',
+        'stackoverflow': 'Stack Overflow',
+        'github': 'GitHub',
+        'devto': 'Dev.to',
+        'medium': 'Medium'
+    };
+    return names[source] || source;
+}
+
 // ---- Message handling ----
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
         try {
-            if (request.type === 'ANALYZE') {
+            if (request.type === 'GENERATE_SEARCH_QUERIES') {
+                // Generate AI-powered search queries
+                const queries = await generateSearchQueries(request.topic, request.sources);
+                sendResponse({ success: true, queries });
+
+            } else if (request.type === 'ANALYZE') {
                 // Start AI analysis
                 const perPost = await analyzePosts(request.posts || []);
                 const aggregate = await aggregateWithGPT(perPost);
@@ -293,16 +442,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     chrome.storage.local.set({ extractionStats: stats });
                 });
 
-            } else if (request.type === 'START_REDDIT_EXTRACTION') {
-                // Handle Reddit extraction request
-                handleRedditExtraction(request, sendResponse);
+            } else if (request.type === 'START_DATA_EXTRACTION') {
+                // Handle data extraction request
+                handleDataExtraction(request, sendResponse);
                 return true; // Keep message channel open for async response
 
-            } else if (request.type === 'REDDIT_DATA_EXTRACTED') {
-                // Handle extracted Reddit data
-                handleRedditDataExtracted(request);
+            } else if (request.type === 'DATA_EXTRACTED') {
+                // Handle extracted data
+                handleDataExtracted(request);
 
-            } else if (request.type === 'STOP_AND_SAVE_REDDIT') {
+            } else if (request.type === 'STOP_AND_SAVE_EXTRACTION') {
                 // Handle stop and save request
                 handleStopAndSave(sendResponse);
                 return true; // Keep message channel open for async response
@@ -320,22 +469,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
-// ---- Reddit Extraction Functions (keeping existing functionality) ----
-async function handleRedditExtraction(request, sendResponse) {
+// ---- Data Extraction Functions ----
+async function handleDataExtraction(request, sendResponse) {
     try {
-        const { redditUrls, closeTabs, extractComments } = request;
+        const { urls, closeTabs, extractComments, extractMetadata } = request;
 
-        if (!redditUrls || redditUrls.length === 0) {
-            throw new Error('No Reddit URLs provided');
+        if (!urls || urls.length === 0) {
+            throw new Error('No URLs provided');
         }
 
         // Update extraction status
         await chrome.storage.local.set({
-            redditExtraction: {
+            dataExtraction: {
                 isRunning: true,
-                currentTask: 'Reddit Extraction',
+                currentTask: 'Data Extraction',
                 progress: 0,
-                total: redditUrls.length,
+                total: urls.length,
                 currentUrl: '',
                 startTime: new Date().toISOString(),
                 extractedData: []
@@ -343,12 +492,12 @@ async function handleRedditExtraction(request, sendResponse) {
         });
 
         // Start extraction process
-        startRedditExtractionProcess(redditUrls, closeTabs, extractComments);
+        startDataExtractionProcess(urls, closeTabs, extractComments, extractMetadata);
 
-        sendResponse({ success: true, message: `Starting extraction of ${redditUrls.length} Reddit URLs` });
+        sendResponse({ success: true, message: `Starting extraction of ${urls.length} URLs` });
 
     } catch (error) {
-        console.error('Error starting Reddit extraction:', error);
+        console.error('Error starting data extraction:', error);
         sendResponse({ success: false, error: error.message });
     }
 }
@@ -396,15 +545,15 @@ function extractRedditUrlsFromCSV(csvContent) {
     return redditUrls;
 }
 
-// Start Reddit extraction process
-async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
+// Start data extraction process
+async function startDataExtractionProcess(urls, closeTabs, extractComments, extractMetadata) {
     let currentTab = null;
 
     for (let i = 0; i < urls.length; i++) {
         try {
             // Check if extraction was stopped before processing each URL
-            const currentState = await chrome.storage.local.get(['redditExtraction']);
-            if (!currentState.redditExtraction.isRunning) {
+            const currentState = await chrome.storage.local.get(['dataExtraction']);
+            if (!currentState.dataExtraction.isRunning) {
                 console.log('Extraction stopped by user - terminating process');
                 if (currentTab) {
                     try {
@@ -418,8 +567,8 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
 
             // Update progress with current URL
             await chrome.storage.local.set({
-                redditExtraction: {
-                    ...currentState.redditExtraction,
+                dataExtraction: {
+                    ...currentState.dataExtraction,
                     progress: i,
                     currentUrl: urls[i],
                     currentIndex: i + 1
@@ -441,8 +590,8 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
                 loadTime += checkInterval;
 
                 // Check if extraction was stopped during loading
-                const stopCheck = await chrome.storage.local.get(['redditExtraction']);
-                if (!stopCheck.redditExtraction.isRunning) {
+                const stopCheck = await chrome.storage.local.get(['dataExtraction']);
+                if (!stopCheck.dataExtraction.isRunning) {
                     console.log('Extraction stopped during page load - terminating process');
                     if (currentTab) {
                         try {
@@ -456,8 +605,8 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
             }
 
             // Check again before extracting data
-            const preExtractState = await chrome.storage.local.get(['redditExtraction']);
-            if (!preExtractState.redditExtraction.isRunning) {
+            const preExtractState = await chrome.storage.local.get(['dataExtraction']);
+            if (!preExtractState.dataExtraction.isRunning) {
                 console.log('Extraction stopped before data extraction - terminating process');
                 if (currentTab) {
                     try {
@@ -469,16 +618,46 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
                 return;
             }
 
-            // Inject content script and extract data
+            // Determine the platform and extract data accordingly
+            const platform = getPlatformFromUrl(urls[i]);
+            let results = null;
+
             try {
-                const results = await chrome.tabs.sendMessage(currentTab.id, {
-                    action: 'extractRedditData',
-                    extractComments: extractComments
-                });
+                if (platform === 'reddit') {
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extractRedditData',
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                } else if (platform === 'stackoverflow') {
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extractStackOverflowData',
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                } else if (platform === 'github') {
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extractGitHubData',
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                } else if (platform === 'devto') {
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extractDevToData',
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                } else if (platform === 'medium') {
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extractMediumData',
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                }
 
                 // Check if extraction was stopped after data extraction
-                const postExtractState = await chrome.storage.local.get(['redditExtraction']);
-                if (!postExtractState.redditExtraction.isRunning) {
+                const postExtractState = await chrome.storage.local.get(['dataExtraction']);
+                if (!postExtractState.dataExtraction.isRunning) {
                     console.log('Extraction stopped after data extraction - terminating process');
                     if (currentTab) {
                         try {
@@ -493,22 +672,23 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
                 if (results && results.success) {
                     const newData = {
                         url: urls[i],
-                        post: results.post,
-                        comments: results.comments || []
+                        platform: platform,
+                        data: results.data || results,
+                        extractedAt: new Date().toISOString()
                     };
 
                     // Add to extracted data and save immediately
-                    const updatedData = [...(postExtractState.redditExtraction.extractedData || []), newData];
+                    const updatedData = [...(postExtractState.dataExtraction.extractedData || []), newData];
                     await chrome.storage.local.set({
-                        redditExtraction: {
-                            ...postExtractState.redditExtraction,
+                        dataExtraction: {
+                            ...postExtractState.dataExtraction,
                             extractedData: updatedData
                         }
                     });
 
-                    console.log(`Successfully extracted data from ${urls[i]}`);
+                    console.log(`Successfully extracted data from ${urls[i]} (${platform})`);
                 } else {
-                    console.log(`Failed to extract data from ${urls[i]}`);
+                    console.log(`Failed to extract data from ${urls[i]} (${platform})`);
                 }
             } catch (messageError) {
                 console.error(`Error sending message to tab ${currentTab.id}:`, messageError);
@@ -539,14 +719,14 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
     }
 
     // Check if extraction was completed normally or stopped
-    const finalState = await chrome.storage.local.get(['redditExtraction']);
-    if (finalState.redditExtraction.isRunning) {
+    const finalState = await chrome.storage.local.get(['dataExtraction']);
+    if (finalState.dataExtraction.isRunning) {
         // Save extracted data as JSON (normal completion)
-        await saveRedditDataAsJSON(finalState.redditExtraction.extractedData);
+        await saveDataAsJSON(finalState.dataExtraction.extractedData);
 
         // Update extraction status - completed
         await chrome.storage.local.set({
-            redditExtraction: {
+            dataExtraction: {
                 isRunning: false,
                 currentTask: null,
                 progress: urls.length,
@@ -559,15 +739,25 @@ async function startRedditExtractionProcess(urls, closeTabs, extractComments) {
             }
         });
 
-        console.log(`Reddit extraction completed. Extracted ${finalState.redditExtraction.extractedData.length} posts.`);
+        console.log(`Data extraction completed. Extracted ${finalState.dataExtraction.extractedData.length} items.`);
     }
 }
 
-// Save Reddit data as JSON
-async function saveRedditDataAsJSON(data, isStopped = false) {
+// Helper function to determine platform from URL
+function getPlatformFromUrl(url) {
+    if (url.includes('reddit.com')) return 'reddit';
+    if (url.includes('stackoverflow.com')) return 'stackoverflow';
+    if (url.includes('github.com')) return 'github';
+    if (url.includes('dev.to')) return 'devto';
+    if (url.includes('medium.com')) return 'medium';
+    return 'unknown';
+}
+
+// Save extracted data as JSON
+async function saveDataAsJSON(data, isStopped = false) {
     const timestamp = new Date().toISOString().split('T')[0];
     const suffix = isStopped ? '_stopped' : '_completed';
-    const filename = `reddit_extraction_${timestamp}${suffix}.json`;
+    const filename = `data_extraction_${timestamp}${suffix}.json`;
 
     // Create data URL instead of blob URL (works in service workers)
     const jsonData = JSON.stringify(data, null, 2);
@@ -589,19 +779,19 @@ function handleRedditDataExtracted(request) {
 // Handle stop and save request
 async function handleStopAndSave(sendResponse) {
     try {
-        const currentState = await chrome.storage.local.get(['redditExtraction']);
+        const currentState = await chrome.storage.local.get(['dataExtraction']);
 
-        if (!currentState.redditExtraction.isRunning) {
+        if (!currentState.dataExtraction.isRunning) {
             sendResponse({ success: false, error: 'No extraction is currently running' });
             return;
         }
 
-        console.log('Stopping Reddit extraction process...');
+        console.log('Stopping data extraction process...');
 
         // Stop the extraction immediately
         await chrome.storage.local.set({
-            redditExtraction: {
-                ...currentState.redditExtraction,
+            dataExtraction: {
+                ...currentState.dataExtraction,
                 isRunning: false,
                 stopped: true,
                 endTime: new Date().toISOString()
@@ -610,15 +800,25 @@ async function handleStopAndSave(sendResponse) {
 
         // Close any open tabs that might be related to the extraction
         try {
-            const tabs = await chrome.tabs.query({ url: 'https://www.reddit.com/*' });
-            for (const tab of tabs) {
-                // Only close tabs that are not the current active tab
-                if (!tab.active) {
-                    try {
-                        await chrome.tabs.remove(tab.id);
-                        console.log(`Closed extraction tab: ${tab.url}`);
-                    } catch (closeError) {
-                        console.error(`Error closing tab ${tab.id}:`, closeError);
+            const tabUrls = [
+                'https://www.reddit.com/*',
+                'https://stackoverflow.com/*',
+                'https://github.com/*',
+                'https://dev.to/*',
+                'https://medium.com/*'
+            ];
+            
+            for (const urlPattern of tabUrls) {
+                const tabs = await chrome.tabs.query({ url: urlPattern });
+                for (const tab of tabs) {
+                    // Only close tabs that are not the current active tab
+                    if (!tab.active) {
+                        try {
+                            await chrome.tabs.remove(tab.id);
+                            console.log(`Closed extraction tab: ${tab.url}`);
+                        } catch (closeError) {
+                            console.error(`Error closing tab ${tab.id}:`, closeError);
+                        }
                     }
                 }
             }
@@ -627,12 +827,12 @@ async function handleStopAndSave(sendResponse) {
         }
 
         // Save the current extracted data
-        if (currentState.redditExtraction.extractedData && currentState.redditExtraction.extractedData.length > 0) {
-            await saveRedditDataAsJSON(currentState.redditExtraction.extractedData, true);
+        if (currentState.dataExtraction.extractedData && currentState.dataExtraction.extractedData.length > 0) {
+            await saveDataAsJSON(currentState.dataExtraction.extractedData, true);
 
             // Clear the extracted data
             await chrome.storage.local.set({
-                redditExtraction: {
+                dataExtraction: {
                     isRunning: false,
                     currentTask: null,
                     progress: 0,
@@ -646,12 +846,12 @@ async function handleStopAndSave(sendResponse) {
 
             sendResponse({
                 success: true,
-                message: `Extraction stopped and saved ${currentState.redditExtraction.extractedData.length} posts`
+                message: `Extraction stopped and saved ${currentState.dataExtraction.extractedData.length} items`
             });
         } else {
             // Clear the extraction state even if no data was extracted
             await chrome.storage.local.set({
-                redditExtraction: {
+                dataExtraction: {
                     isRunning: false,
                     currentTask: null,
                     progress: 0,

@@ -1,50 +1,52 @@
-# Reddit AI Demand Miner Chrome Extension
+# AI Demand Intelligence Miner Chrome Extension
 
-A powerful Chrome extension that scrapes Reddit posts, analyzes them with OpenAI, and aggregates the most requested AI tools and MVP opportunities. Features a modern three-mode sidebar interface with Google extraction, Reddit scraping, and AI analysis capabilities.
+A powerful Chrome extension that extracts insights from multiple platforms (Reddit, Stack Overflow, GitHub, Dev.to, Medium), analyzes them with AI, and identifies market demands and opportunities. Features a modern three-mode interface with source selection, data extraction, and AI analysis capabilities.
 
 ## ✨ Features
 
-### 🎨 Modern Three-Mode Sidebar Interface
-- **Fixed Sidebar**: Persistent sidebar panel that stays open while browsing
-- **Toggle Switcher**: Beautiful Google/Reddit/AI mode switcher with themed interfaces
-- **Google Theme**: Blue gradient with Google-style icons and colors
-- **Reddit Theme**: Orange gradient with Reddit-style icons and colors
-- **AI Theme**: Gold gradient with AI analysis capabilities
-- **Expanded Space**: More room for detailed AI analysis results and features
+### 🎨 Modern Three-Mode Interface
+- **Sources Mode**: Select and configure data sources (Reddit, Stack Overflow, GitHub, Dev.to, Medium)
+- **Extraction Mode**: Extract content from URLs found by AI-generated search queries
+- **AI Analysis Mode**: Analyze extracted data with customizable AI models and prompts
+- **Themed Interfaces**: Sources (purple), Extraction (orange), and AI (gold) themed UIs
+- **Site-Specific Icons**: Beautiful icons for each supported platform
 - **Responsive Design**: Optimized for all screen sizes
 - **Real-time Updates**: Live progress tracking and status updates
 
-### 🔍 Google Search Results Extraction
-- Extracts titles, URLs, snippets, and domains from Google search results
-- Automatically detects search queries
-- Stores results with timestamps and position information
-- Works across multiple search pages and queries
-- Saves CSV files to Downloads folder
-- **Enhanced UI**: Google-themed interface with familiar icons
+### 🎯 AI-Powered Search Query Generation
+- **Smart Query Creation**: AI generates optimized Google search queries for each selected platform
+- **Platform-Specific Queries**: Tailored search terms for Reddit, Stack Overflow, GitHub, Dev.to, and Medium
+- **Customizable Prompts**: Modify search query generation prompts in settings
+- **Topic-Based Generation**: Enter any topic to generate relevant search queries
+- **Multi-Platform Support**: Generate queries for multiple platforms simultaneously
 
-### 🐹 Reddit Content Extraction
-- Extract Reddit posts with titles, content, authors, and scores
-- Extract Reddit comments with content, authors, and scores
-- Automated Reddit extraction from CSV files
-- Tab management for efficient resource usage
-- JSON export for Reddit data
+### 📊 Multi-Platform Data Extraction
+- **Reddit**: Extract posts, comments, scores, and metadata
+- **Stack Overflow**: Extract questions, answers, comments, and votes
+- **GitHub**: Extract issues, pull requests, discussions, and releases
+- **Dev.to**: Extract articles, comments, and reactions
+- **Medium**: Extract articles and responses
+- **Automated Extraction**: Process URLs from AI-generated search results
+- **Tab Management**: Efficient resource usage with automatic tab closing
+- **JSON Export**: Structured data export for all platforms
 - **Stop-and-Save**: Save extracted data when stopping midway
-- **Enhanced UI**: Reddit-themed interface with Reddit icons
 
-### 🤖 AI Analysis with OpenAI
-- **Two-layer GPT analysis**: Per-post analysis followed by aggregate insights
-- **Structured outputs**: Guaranteed JSON schema compliance
-- **Demand pattern identification**: Find most requested AI tools
-- **MVP recommendations**: Generate actionable product ideas
-- **Emotional driver analysis**: Understand user motivations
-- **Action plan generation**: 24-hour implementation roadmap
-- **Enhanced results display**: Detailed grid layout with categorized insights
-- **Full-screen analysis tab**: Open detailed results in a dedicated browser tab
-- **Interactive statistics**: Real-time metrics and confidence scores
-- **Export capabilities**: JSON export with full analysis data
-- **Share functionality**: Copy analysis summaries to clipboard
-- **Report loading**: Open previously exported reports in the analysis tab
-- **API key management**: Secure local storage of OpenAI credentials
+### 🤖 Advanced AI Analysis with OpenAI
+- **Multiple AI Models**: Choose from GPT-4o, GPT-4o Mini, GPT-4 Turbo, or GPT-3.5 Turbo
+- **Customizable Prompts**: Modify analysis prompts to focus on specific aspects
+- **Two-layer Analysis**: Per-item analysis followed by aggregate insights
+- **Structured Outputs**: Guaranteed JSON schema compliance
+- **Demand Pattern Identification**: Find most requested AI tools across all platforms
+- **MVP Recommendations**: Generate actionable product ideas
+- **Emotional Driver Analysis**: Understand user motivations and pain points
+- **Action Plan Generation**: 24-hour implementation roadmap
+- **Enhanced Results Display**: Detailed grid layout with categorized insights
+- **Full-Screen Analysis Tab**: Open detailed results in a dedicated browser tab
+- **Interactive Statistics**: Real-time metrics and confidence scores
+- **Export Capabilities**: JSON export with full analysis data
+- **Share Functionality**: Copy analysis summaries to clipboard
+- **Report Loading**: Open previously exported reports in the analysis tab
+- **Secure API Key Management**: Local storage with customizable settings
 
 ### 📊 Advanced Data Management
 - Temporary storage of all extracted data
@@ -119,16 +121,18 @@ A powerful Chrome extension that scrapes Reddit posts, analyzes them with OpenAI
 2. **Configure Extension**:
    - Right-click the extension icon → "Options"
    - Paste your API key in the settings page
-   - Click "Save API Key"
+   - Select your preferred AI model (GPT-4o, GPT-4o Mini, etc.)
+   - Customize analysis prompts if desired
+   - Click "Save Settings"
 
 3. **Security Note**: Your API key is stored locally and never shared. For production use, consider using a backend proxy.
 
 ### 🖥️ AI Analysis Tab - Full-Screen Results
 
-The AI Analysis Tab provides a comprehensive, full-screen view of your analysis results with enhanced visualizations and export capabilities:
+The AI Analysis Tab provides a comprehensive, full-screen view of your multi-platform analysis results with enhanced visualizations and export capabilities:
 
 #### Features:
-- **📊 Interactive Statistics Dashboard**: Real-time metrics including posts analyzed, unique tools identified, MVP count, and average confidence scores
+- **📊 Interactive Statistics Dashboard**: Real-time metrics including items analyzed, unique tools identified, MVP count, and average confidence scores
 - **🎯 Categorized Results**: Organized display of top requested tools, MVP recommendations, common issues, and praised features
 - **📋 Detailed Action Plan**: Step-by-step 24-hour implementation roadmap with clear priorities
 - **📤 Advanced Export Options**: 
@@ -170,6 +174,10 @@ chrome-extractor/
 ├── background.js          # Background service worker with AI analysis pipeline
 ├── content-google.js      # Google search results extraction
 ├── content-reddit.js      # Reddit content extraction
+├── content-stackoverflow.js # Stack Overflow content extraction
+├── content-github.js      # GitHub content extraction
+├── content-devto.js       # Dev.to content extraction
+├── content-medium.js      # Medium content extraction
 ├── popup.html             # Enhanced popup interface (fallback)
 ├── popup.js               # Popup functionality
 ├── sidepanel.html         # Modern three-mode sidebar interface
@@ -196,24 +204,24 @@ The exported CSV includes the following columns:
 - **Timestamp**: When the result was extracted
 - **Source**: Always "Google Search"
 
-### 📄 JSON Export Format (Reddit Data)
-The exported JSON includes an array of posts, each containing:
-- **Post data**: title, content, author, subreddit, score, timestamp, url
-- **Comments array**: Each comment with content, author, score, timestamp
-- **Metadata**: extraction timestamp, source URL
-- **File naming**: `reddit_extraction_YYYY-MM-DD_completed.json` or `reddit_extraction_YYYY-MM-DD_stopped.json`
+### 📄 JSON Export Format (Multi-Platform Data)
+The exported JSON includes an array of items from all platforms, each containing:
+- **Platform-specific data**: title, content, author, platform, score, timestamp, url
+- **Comments/Answers array**: Each comment/answer with content, author, score, timestamp
+- **Metadata**: extraction timestamp, source URL, platform type
+- **File naming**: `data_extraction_YYYY-MM-DD_completed.json` or `data_extraction_YYYY-MM-DD_stopped.json`
 
 ### 🤖 AI Analysis Export Format
 The exported AI analysis JSON includes:
-- **Per-post analysis**: Individual analysis of each Reddit post
+- **Per-item analysis**: Individual analysis of each platform item
 - **Aggregated insights**: Top requested tools, MVP recommendations, action plans
 - **Metadata**: Analysis timestamp, model used, confidence scores
 - **File naming**: `ai_analysis_YYYY-MM-DD.json`
 
 ## AI Analysis Schema
 
-### Per-Post Analysis
-Each Reddit post is analyzed for:
+### Per-Item Analysis
+Each platform item is analyzed for:
 - **Requested tools**: AI tools/tasks people want built
 - **Issues**: Problems they're facing
 - **Pros**: Benefits they mention
@@ -239,9 +247,15 @@ The extension requires the following permissions:
 - `storage`: To store extracted data and API keys locally
 - `scripting`: To inject content scripts
 - `downloads`: To save CSV and JSON files to specific directories
-- `tabs`: To manage tabs for Reddit extraction
+- `tabs`: To manage tabs for multi-platform extraction
+- `https://www.google.com/*`: To extract Google search results
+- `https://www.reddit.com/*`: To extract Reddit posts and comments
+- `https://stackoverflow.com/*`: To extract Stack Overflow questions and answers
+- `https://github.com/*`: To extract GitHub issues and discussions
+- `https://dev.to/*`: To extract Dev.to articles and comments
+- `https://medium.com/*`: To extract Medium articles and responses
 - `sidePanel`: To display the fixed sidebar interface
-- Host permissions for `google.com`, `reddit.com`, and `platform.openai.com`
+- Host permissions for `google.com`, `reddit.com`, `stackoverflow.com`, `github.com`, `dev.to`, `medium.com`, and `platform.openai.com`
 
 ## Development
 
@@ -260,6 +274,8 @@ This extension:
 - Only accesses pages you explicitly visit
 - Makes API calls to OpenAI with your credentials
 - Allows you to clear all data at any time
+- Enables you to choose your preferred AI model for analysis
+- Allows customization of analysis prompts for specific use cases
 
 **Important**: For production use, implement a backend proxy to keep your OpenAI API key secure.
 
@@ -273,6 +289,10 @@ This extension:
 - Batch processing improvements
 - Custom analysis prompts
 - Team collaboration features
+- Support for additional platforms (Hacker News, Product Hunt, etc.)
+- Automated trend detection
+- Custom analysis templates
+- API for third-party integrations
 
 ## License
 

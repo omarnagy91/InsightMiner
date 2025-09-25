@@ -3,30 +3,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // Mode switching elements
     const modeSwitcher = document.querySelector('.mode-switcher');
     const modeOptions = document.querySelectorAll('.mode-option');
-    const googleMode = document.getElementById('googleMode');
-    const redditMode = document.getElementById('redditMode');
+    const sourcesMode = document.getElementById('sourcesMode');
+    const extractionMode = document.getElementById('extractionMode');
     const aiMode = document.getElementById('aiMode');
 
-    // Google mode elements
-    const extractBtn = document.getElementById('extractBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const statusDiv = document.getElementById('status');
-    const totalResultsSpan = document.getElementById('totalResults');
-    const lastExtractionSpan = document.getElementById('lastExtraction');
+    // Sources mode elements
+    const selectedSourcesCount = document.getElementById('selectedSourcesCount');
+    const lastAnalysis = document.getElementById('lastAnalysis');
+    const sourceCheckboxes = document.querySelectorAll('input[id^="source"]');
+    const generateDorks = document.getElementById('generateDorks');
+    const sourcesStatus = document.getElementById('sourcesStatus');
 
-    // Reddit mode elements
-    const currentPageSpan = document.getElementById('currentPage');
+    // Extraction mode elements
+    const totalUrls = document.getElementById('totalUrls');
     const extractionStatusSpan = document.getElementById('extractionStatus');
     const csvFileInput = document.getElementById('csvFileInput');
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
     const urlCount = document.getElementById('urlCount');
-    const startRedditExtraction = document.getElementById('startRedditExtraction');
-    const redditStatus = document.getElementById('redditStatus');
+    const sourceBreakdown = document.getElementById('sourceBreakdown');
+    const startExtraction = document.getElementById('startExtraction');
+    const extractionStatus = document.getElementById('extractionStatus');
 
     // Progress tracking elements
-    const redditProgress = document.getElementById('redditProgress');
+    const extractionProgress = document.getElementById('extractionProgress');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
     const progressPercent = document.getElementById('progressPercent');
@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event listeners
     setupModeSwitching();
-    setupGoogleMode();
-    setupRedditMode();
+    setupSourcesMode();
+    setupExtractionMode();
     setupAIMode();
 
     // Mode switching functionality
@@ -86,32 +86,38 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Show/hide content areas
-        googleMode.classList.toggle('active', mode === 'google');
-        redditMode.classList.toggle('active', mode === 'reddit');
+        sourcesMode.classList.toggle('active', mode === 'sources');
+        extractionMode.classList.toggle('active', mode === 'extraction');
         aiMode.classList.toggle('active', mode === 'ai');
 
         // Update body theme
-        if (mode === 'google') {
-            document.body.className = 'google-theme';
-        } else if (mode === 'reddit') {
-            document.body.className = 'reddit-theme';
+        if (mode === 'sources') {
+            document.body.className = 'sources-theme';
+        } else if (mode === 'extraction') {
+            document.body.className = 'extraction-theme';
         } else if (mode === 'ai') {
             document.body.className = 'ai-theme';
         }
     }
 
-    // Google mode setup
-    function setupGoogleMode() {
-        extractBtn.addEventListener('click', extractCurrentPage);
-        exportBtn.addEventListener('click', exportToCSV);
-        clearBtn.addEventListener('click', clearAllData);
+    // Sources mode setup
+    function setupSourcesMode() {
+        // Add event listeners for source checkboxes
+        sourceCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedSourcesCount);
+        });
+        
+        generateDorks.addEventListener('click', generateSearchQueries);
+        
+        // Initialize source count
+        updateSelectedSourcesCount();
     }
 
-    // Reddit mode setup
-    function setupRedditMode() {
+    // Extraction mode setup
+    function setupExtractionMode() {
         csvFileInput.addEventListener('change', handleFileSelect);
-        startRedditExtraction.addEventListener('click', startRedditExtractionProcess);
-        stopExtraction.addEventListener('click', stopRedditExtraction);
+        startExtraction.addEventListener('click', startExtractionProcess);
+        stopExtraction.addEventListener('click', stopExtractionProcess);
     }
 
     // AI mode setup
@@ -132,51 +138,109 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize popup data
     async function initializePopup() {
         try {
-            // Get current tab info
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            updateCurrentPageInfo(tab.url);
-
             // Load stored data
-            const stored = await chrome.storage.local.get(['searchResults', 'extractionStats', 'redditExtraction', 'aiAnalysis', 'per_post_analysis', 'aggregated_analysis']);
-            updateGoogleStats(stored.searchResults || [], stored.extractionStats || {});
-            updateRedditStatus(stored.redditExtraction || {});
+            const stored = await chrome.storage.local.get([
+                'selectedSources', 
+                'extractionStats', 
+                'dataExtraction', 
+                'aiAnalysis', 
+                'per_post_analysis', 
+                'aggregated_analysis'
+            ]);
+            
+            updateSourcesStats(stored.selectedSources || []);
+            updateExtractionStatus(stored.dataExtraction || {});
             updateAIStatus(stored.aiAnalysis || {}, stored.per_post_analysis || [], stored.aggregated_analysis || null);
-
-            // Check if current page is Google search
-            if (tab.url && tab.url.includes('google.com/search')) {
-                extractBtn.disabled = false;
-                extractBtn.innerHTML = '<div class="mode-icon google-icon"></div>Extract Current Page Results';
-            } else {
-                extractBtn.disabled = true;
-                extractBtn.innerHTML = '<div class="mode-icon google-icon"></div>Navigate to Google Search First';
-            }
 
         } catch (error) {
             console.error('Error initializing popup:', error);
-            showStatus('Error initializing extension', 'error');
+            showSourcesStatus('Error initializing extension', 'error');
         }
     }
 
-    // Update current page info
-    function updateCurrentPageInfo(url) {
-        if (url.includes('google.com/search')) {
-            currentPageSpan.textContent = 'Google Search';
-        } else if (url.includes('reddit.com')) {
-            currentPageSpan.textContent = 'Reddit';
+    // Update selected sources count
+    function updateSelectedSourcesCount() {
+        const selectedCount = Array.from(sourceCheckboxes).filter(cb => cb.checked).length;
+        selectedSourcesCount.textContent = selectedCount;
+        
+        // Store selected sources
+        const selectedSources = Array.from(sourceCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.id.replace('source', '').toLowerCase());
+        
+        chrome.storage.local.set({ selectedSources });
+    }
+
+    // Update sources statistics
+    function updateSourcesStats(sources) {
+        selectedSourcesCount.textContent = sources.length;
+        
+        // Update checkboxes based on stored sources
+        sourceCheckboxes.forEach(checkbox => {
+            const sourceName = checkbox.id.replace('source', '').toLowerCase();
+            checkbox.checked = sources.includes(sourceName);
+        });
+    }
+
+    // Update extraction status
+    function updateExtractionStatus(extraction) {
+        if (extraction.isRunning) {
+            extractionStatusSpan.textContent = 'Running';
+            showProgressTracking(extraction);
+        } else if (extraction.completed) {
+            extractionStatusSpan.textContent = 'Completed';
+        } else if (extraction.stopped) {
+            extractionStatusSpan.textContent = 'Stopped';
         } else {
-            currentPageSpan.textContent = 'Other';
+            extractionStatusSpan.textContent = 'Ready';
         }
     }
 
-    // Update Google statistics display
-    function updateGoogleStats(results, stats) {
-        totalResultsSpan.textContent = results.length;
+    // Generate AI-powered search queries
+    async function generateSearchQueries() {
+        try {
+            const selectedSources = Array.from(sourceCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.id.replace('source', '').toLowerCase());
 
-        if (stats.lastExtraction) {
-            const date = new Date(stats.lastExtraction);
-            lastExtractionSpan.textContent = date.toLocaleString();
-        } else {
-            lastExtractionSpan.textContent = 'Never';
+            if (selectedSources.length === 0) {
+                showSourcesStatus('Please select at least one data source', 'error');
+                return;
+            }
+
+            generateDorks.disabled = true;
+            generateDorks.innerHTML = '<div class="loading"></div>Generating...';
+            showSourcesStatus('Generating AI-powered search queries...', 'success');
+
+            // Get user input for the topic/field
+            const topic = prompt('Enter the topic or field you want to analyze (e.g., "AI tools for developers", "productivity software", "automation tools"):');
+            if (!topic) {
+                generateDorks.disabled = false;
+                generateDorks.innerHTML = '<div class="mode-icon ai-icon"></div>Generate AI-Powered Search Queries';
+                return;
+            }
+
+            // Send message to background script to generate dorks
+            const response = await chrome.runtime.sendMessage({
+                type: 'GENERATE_SEARCH_QUERIES',
+                topic: topic,
+                sources: selectedSources
+            });
+
+            if (response.success) {
+                showSourcesStatus('Search queries generated successfully! Check the Extraction tab.', 'success');
+                // Switch to extraction mode
+                switchMode('extraction');
+            } else {
+                throw new Error(response.error || 'Failed to generate search queries');
+            }
+
+        } catch (error) {
+            console.error('Error generating search queries:', error);
+            showSourcesStatus('Error: ' + error.message, 'error');
+        } finally {
+            generateDorks.disabled = false;
+            generateDorks.innerHTML = '<div class="mode-icon ai-icon"></div>Generate AI-Powered Search Queries';
         }
     }
 
@@ -332,112 +396,131 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Handle file selection (Reddit mode)
+    // Handle file selection (Extraction mode)
     function handleFileSelect(event) {
         const file = event.target.files[0];
         if (file && file.type === 'text/csv') {
             const reader = new FileReader();
             reader.onload = function (e) {
                 const csvContent = e.target.result;
-                const redditUrls = extractRedditUrlsFromCSV(csvContent);
+                const urls = extractUrlsFromCSV(csvContent);
+                const sourceBreakdown = getSourceBreakdown(urls);
 
                 fileName.textContent = file.name;
-                urlCount.textContent = redditUrls.length;
+                urlCount.textContent = urls.length;
+                sourceBreakdown.textContent = Object.entries(sourceBreakdown)
+                    .map(([source, count]) => `${source}: ${count}`)
+                    .join(', ');
                 fileInfo.style.display = 'block';
 
                 // Store the URLs for extraction
-                window.selectedRedditUrls = redditUrls;
+                window.selectedUrls = urls;
             };
             reader.readAsText(file);
         } else {
-            showRedditStatus('Please select a valid CSV file', 'error');
+            showExtractionStatus('Please select a valid CSV file', 'error');
         }
     }
 
-    // Extract Reddit URLs from CSV content
-    function extractRedditUrlsFromCSV(csvContent) {
+    // Extract URLs from CSV content
+    function extractUrlsFromCSV(csvContent) {
         const lines = csvContent.split('\n');
-        const redditUrls = [];
+        const urls = [];
 
         for (let i = 1; i < lines.length; i++) { // Skip header
             const columns = lines[i].split(',');
             if (columns.length >= 2) {
                 const url = columns[1].replace(/"/g, ''); // Remove quotes
-                if (url.includes('reddit.com')) {
-                    redditUrls.push(url);
+                if (url && (url.includes('reddit.com') || url.includes('stackoverflow.com') || 
+                           url.includes('github.com') || url.includes('dev.to') || url.includes('medium.com'))) {
+                    urls.push(url);
                 }
             }
         }
 
-        return redditUrls;
+        return urls;
     }
 
-    // Start Reddit extraction process
-    async function startRedditExtractionProcess() {
-        if (!window.selectedRedditUrls || window.selectedRedditUrls.length === 0) {
-            showRedditStatus('Please select a CSV file with Reddit URLs', 'error');
+    // Get source breakdown from URLs
+    function getSourceBreakdown(urls) {
+        const breakdown = {};
+        urls.forEach(url => {
+            if (url.includes('reddit.com')) breakdown.reddit = (breakdown.reddit || 0) + 1;
+            else if (url.includes('stackoverflow.com')) breakdown.stackoverflow = (breakdown.stackoverflow || 0) + 1;
+            else if (url.includes('github.com')) breakdown.github = (breakdown.github || 0) + 1;
+            else if (url.includes('dev.to')) breakdown.devto = (breakdown.devto || 0) + 1;
+            else if (url.includes('medium.com')) breakdown.medium = (breakdown.medium || 0) + 1;
+        });
+        return breakdown;
+    }
+
+    // Start data extraction process
+    async function startExtractionProcess() {
+        if (!window.selectedUrls || window.selectedUrls.length === 0) {
+            showExtractionStatus('Please select a CSV file with URLs', 'error');
             return;
         }
 
         try {
-            startRedditExtraction.disabled = true;
-            startRedditExtraction.innerHTML = '<div class="loading"></span>Starting...';
+            startExtraction.disabled = true;
+            startExtraction.innerHTML = '<div class="loading"></div>Starting...';
 
-            showRedditStatus('Starting Reddit extraction...', 'success');
+            showExtractionStatus('Starting data extraction...', 'success');
 
-            // Send message to background script to start Reddit extraction
+            // Send message to background script to start extraction
             const response = await chrome.runtime.sendMessage({
-                type: 'START_REDDIT_EXTRACTION',
-                redditUrls: window.selectedRedditUrls,
+                type: 'START_DATA_EXTRACTION',
+                urls: window.selectedUrls,
                 closeTabs: document.getElementById('closeTabs').checked,
-                extractComments: document.getElementById('extractComments').checked
+                extractComments: document.getElementById('extractComments').checked,
+                extractMetadata: document.getElementById('extractMetadata').checked
             });
 
             if (response.success) {
-                showRedditStatus('Reddit extraction started successfully!', 'success');
+                showExtractionStatus('Data extraction started successfully!', 'success');
                 // Show progress tracking
                 setTimeout(() => {
-                    checkRedditExtractionStatus();
+                    checkExtractionStatus();
                 }, 1000);
             } else {
                 throw new Error(response.error || 'Failed to start extraction');
             }
 
         } catch (error) {
-            console.error('Error starting Reddit extraction:', error);
-            showRedditStatus('Error: ' + error.message, 'error');
+            console.error('Error starting data extraction:', error);
+            showExtractionStatus('Error: ' + error.message, 'error');
         } finally {
-            startRedditExtraction.disabled = false;
-            startRedditExtraction.innerHTML = '<div class="mode-icon reddit-icon"></div>Start Reddit Extraction';
+            startExtraction.disabled = false;
+            startExtraction.innerHTML = '<div class="mode-icon extraction-icon"></div>Start Data Extraction';
         }
     }
 
-    // Check Reddit extraction status
-    async function checkRedditExtractionStatus() {
+    // Check extraction status
+    async function checkExtractionStatus() {
         try {
-            const stored = await chrome.storage.local.get(['redditExtraction']);
-            const extraction = stored.redditExtraction || {};
+            const stored = await chrome.storage.local.get(['dataExtraction']);
+            const extraction = stored.dataExtraction || {};
 
             if (extraction.isRunning) {
                 showProgressTracking(extraction);
             } else if (extraction.completed) {
-                showRedditStatus('Reddit extraction completed!', 'success');
+                showExtractionStatus('Data extraction completed!', 'success');
                 hideProgressTracking();
             }
         } catch (error) {
-            console.error('Error checking Reddit extraction status:', error);
+            console.error('Error checking extraction status:', error);
         }
     }
 
     // Show progress tracking
     function showProgressTracking(extraction) {
-        redditProgress.style.display = 'block';
+        extractionProgress.style.display = 'block';
         updateProgress(extraction);
     }
 
     // Hide progress tracking
     function hideProgressTracking() {
-        redditProgress.style.display = 'none';
+        extractionProgress.style.display = 'none';
     }
 
     // Update progress display
@@ -455,27 +538,27 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Stop Reddit extraction
-    async function stopRedditExtraction() {
+    // Stop extraction process
+    async function stopExtractionProcess() {
         try {
             stopExtraction.disabled = true;
             stopExtraction.innerHTML = '<div class="loading"></div>Stopping...';
 
             // Send message to background script to stop and save
             const response = await chrome.runtime.sendMessage({
-                type: 'STOP_AND_SAVE_REDDIT'
+                type: 'STOP_AND_SAVE_EXTRACTION'
             });
 
             if (response.success) {
-                showRedditStatus(response.message, 'success');
+                showExtractionStatus(response.message, 'success');
             } else {
-                showRedditStatus('Error: ' + response.error, 'error');
+                showExtractionStatus('Error: ' + response.error, 'error');
             }
 
             hideProgressTracking();
         } catch (error) {
-            console.error('Error stopping Reddit extraction:', error);
-            showRedditStatus('Error stopping extraction: ' + error.message, 'error');
+            console.error('Error stopping extraction:', error);
+            showExtractionStatus('Error stopping extraction: ' + error.message, 'error');
         } finally {
             stopExtraction.disabled = false;
             stopExtraction.innerHTML = 'Stop Extraction';
@@ -493,14 +576,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
-    // Show status in Reddit mode
-    function showRedditStatus(message, type) {
-        redditStatus.textContent = message;
-        redditStatus.className = `status ${type}`;
-        redditStatus.style.display = 'block';
+    // Show status in sources mode
+    function showSourcesStatus(message, type) {
+        sourcesStatus.textContent = message;
+        sourcesStatus.className = `status ${type}`;
+        sourcesStatus.style.display = 'block';
 
         setTimeout(() => {
-            redditStatus.style.display = 'none';
+            sourcesStatus.style.display = 'none';
+        }, 5000);
+    }
+
+    // Show status in extraction mode
+    function showExtractionStatus(message, type) {
+        extractionStatus.textContent = message;
+        extractionStatus.className = `status ${type}`;
+        extractionStatus.style.display = 'block';
+
+        setTimeout(() => {
+            extractionStatus.style.display = 'none';
         }, 5000);
     }
 
@@ -781,23 +875,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // Listen for storage changes to update stats in real-time
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local') {
-            if (changes.searchResults || changes.extractionStats) {
-                const results = changes.searchResults ? changes.searchResults.newValue : [];
-                const stats = changes.extractionStats ? changes.extractionStats.newValue : {};
-                updateGoogleStats(results, stats);
+            if (changes.selectedSources) {
+                const sources = changes.selectedSources.newValue;
+                updateSourcesStats(sources);
             }
 
-            if (changes.redditExtraction) {
-                const extraction = changes.redditExtraction.newValue;
-                updateRedditStatus(extraction);
+            if (changes.dataExtraction) {
+                const extraction = changes.dataExtraction.newValue;
+                updateExtractionStatus(extraction);
 
                 if (extraction.isRunning) {
                     updateProgress(extraction);
                 } else if (extraction.completed) {
-                    showRedditStatus('Reddit extraction completed!', 'success');
+                    showExtractionStatus('Data extraction completed!', 'success');
                     hideProgressTracking();
                 } else if (extraction.stopped) {
-                    // Don't show status here as it's already handled in stopRedditExtraction
+                    // Don't show status here as it's already handled in stopExtractionProcess
                     hideProgressTracking();
                 }
             }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Reddit AI Demand Miner",
-  "version": "1.0.0",
-  "description": "Scrape Reddit posts, analyze with OpenAI, and aggregate most requested AI tools.",
+  "name": "AI Demand Intelligence Miner",
+  "version": "2.0.0",
+  "description": "Extract insights from multiple platforms (Reddit, Stack Overflow, GitHub) and analyze with AI to identify market demands and opportunities.",
   "permissions": [
     "activeTab",
     "storage",
@@ -15,6 +15,10 @@
   "host_permissions": [
     "https://www.google.com/*",
     "https://www.reddit.com/*",
+    "https://stackoverflow.com/*",
+    "https://github.com/*",
+    "https://dev.to/*",
+    "https://medium.com/*",
     "https://platform.openai.com/*"
   ],
   "background": {
@@ -32,13 +36,33 @@
       "matches": ["https://www.reddit.com/*"],
       "js": ["content-reddit.js"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://stackoverflow.com/*"],
+      "js": ["content-stackoverflow.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content-github.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://dev.to/*"],
+      "js": ["content-devto.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://medium.com/*"],
+      "js": ["content-medium.js"],
+      "run_at": "document_end"
     }
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Open Reddit AI Demand Miner",
+    "default_title": "Open AI Demand Intelligence Miner",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"
