@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupAIMode();
     setupTooltips();
     setupKeyboardShortcuts();
+    setupSecurityWarning();
 
     // Enhanced mode switching functionality
     function setupModeSwitching() {
@@ -213,6 +214,15 @@ document.addEventListener('DOMContentLoaded', function () {
         openReportUI.addEventListener('click', openReportUIPage);
         exportAnalysis.addEventListener('click', exportAnalysisResults);
 
+        // Continue and regeneration buttons
+        const continueFromLastAnalysis = document.getElementById('continueFromLastAnalysis');
+        const regeneratePitches = document.getElementById('regeneratePitches');
+        const regeneratePlan = document.getElementById('regeneratePlan');
+
+        continueFromLastAnalysis.addEventListener('click', continueFromLastAnalysisProcess);
+        regeneratePitches.addEventListener('click', regeneratePitchesProcess);
+        regeneratePlan.addEventListener('click', regeneratePlanProcess);
+
         // File selection setup
         jsonFileInput.addEventListener('change', handleJSONFileSelect);
         reportFileInput.addEventListener('change', handleReportFileSelect);
@@ -220,29 +230,41 @@ document.addEventListener('DOMContentLoaded', function () {
         dataSourceRadios.forEach(radio => {
             radio.addEventListener('change', handleDataSourceChange);
         });
+
+        // Weight controls setup
+        setupWeightControls();
     }
 
     // Initialize sidepanel data
     async function initializeSidepanel() {
         try {
-            // Load stored data
+            // Load stored data using new storage keys
             const stored = await chrome.storage.local.get([
                 'selectedSources',
-                'dataExtraction',
-                'aiAnalysis',
+                'extractionState',
+                'analysisState',
                 'per_post_analysis',
                 'aggregated_analysis',
-                'searchResults'
+                'searchResults',
+                'failedUrls',
+                'demandWeights',
+                'lastExtractionRun',
+                'lastAnalysisRun'
             ]);
 
             updateSelectedSourcesCount();
             updateSourcesStats(stored.selectedSources || ['reddit']);
-            updateExtractionStatus(stored.dataExtraction || {});
-            updateAIStatus(stored.aiAnalysis || {}, stored.per_post_analysis || [], stored.aggregated_analysis || null);
+            updateExtractionStatus(stored.extractionState || {});
+            updateAIStatus(stored.analysisState || {}, stored.per_post_analysis || [], stored.aggregated_analysis || null);
 
             // Show export button if we have search results
             if (stored.searchResults && stored.searchResults.length > 0) {
                 exportSearchResults.style.display = 'block';
+            }
+
+            // Show failed URLs if any
+            if (stored.failedUrls && stored.failedUrls.length > 0) {
+                showFailedUrlsNotification(stored.failedUrls.length);
             }
 
             // Check for ongoing Google search progress
@@ -922,28 +944,161 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            // Create export options dialog
+            const exportFormat = await showExportFormatDialog();
+            if (!exportFormat) return;
+
             const exportData = {
                 timestamp: new Date().toISOString(),
                 per_post_analysis: per_post_analysis || [],
                 aggregated_analysis: aggregated_analysis
             };
 
-            const jsonData = JSON.stringify(exportData, null, 2);
-            const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(jsonData)}`;
+            if (exportFormat === 'json') {
+                const jsonData = JSON.stringify(exportData, null, 2);
+                const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(jsonData)}`;
 
-            await chrome.downloads.download({
-                url: dataUrl,
-                filename: `ai_analysis_${new Date().toISOString().split('T')[0]}.json`,
-                conflictAction: 'overwrite',
-                saveAs: true
-            });
+                await chrome.downloads.download({
+                    url: dataUrl,
+                    filename: `ai_analysis_${new Date().toISOString().split('T')[0]}.json`,
+                    conflictAction: 'overwrite',
+                    saveAs: true
+                });
+            } else if (exportFormat === 'markdown') {
+                const markdownData = generateMarkdownReport(exportData);
+                const dataUrl = `data:text/markdown;charset=utf-8,${encodeURIComponent(markdownData)}`;
 
-            showAIStatus('Analysis results exported successfully!', 'success');
+                await chrome.downloads.download({
+                    url: dataUrl,
+                    filename: `ai_analysis_report_${new Date().toISOString().split('T')[0]}.md`,
+                    conflictAction: 'overwrite',
+                    saveAs: true
+                });
+            }
+
+            showAIStatus(`Analysis results exported as ${exportFormat.toUpperCase()} successfully!`, 'success');
 
         } catch (error) {
             console.error('Error exporting analysis:', error);
             showAIStatus('Error exporting analysis: ' + error.message, 'error');
         }
+    }
+
+    // Show export format dialog
+    function showExportFormatDialog() {
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+
+            dialog.innerHTML = `
+                <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
+                    <h3 style="margin: 0 0 16px 0; color: #333;">Export Format</h3>
+                    <p style="margin: 0 0 20px 0; color: #666;">Choose the format for your analysis export:</p>
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button id="exportJson" style="flex: 1; padding: 12px; border: 2px solid #4285F4; background: white; color: #4285F4; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            JSON
+                        </button>
+                        <button id="exportMarkdown" style="flex: 1; padding: 12px; border: 2px solid #4285F4; background: white; color: #4285F4; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            Markdown
+                        </button>
+                    </div>
+                    <button id="cancelExport" style="width: 100%; padding: 12px; border: 1px solid #ccc; background: #f5f5f5; color: #333; border-radius: 8px; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
+            `;
+
+            document.body.appendChild(dialog);
+
+            dialog.querySelector('#exportJson').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve('json');
+            });
+
+            dialog.querySelector('#exportMarkdown').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve('markdown');
+            });
+
+            dialog.querySelector('#cancelExport').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve(null);
+            });
+        });
+    }
+
+    // Generate Markdown report
+    function generateMarkdownReport(data) {
+        const { aggregated_analysis, timestamp } = data;
+        const date = new Date(timestamp).toLocaleDateString();
+
+        let markdown = `# AI Demand Intelligence Analysis Report\n\n`;
+        markdown += `**Generated:** ${date}\n\n`;
+        markdown += `---\n\n`;
+
+        // Executive Summary
+        markdown += `## 📊 Executive Summary\n\n`;
+        if (aggregated_analysis.short_action_plan) {
+            markdown += `${aggregated_analysis.short_action_plan}\n\n`;
+        }
+
+        // Top Requested Tools
+        if (aggregated_analysis.top_requested_tools && aggregated_analysis.top_requested_tools.length > 0) {
+            markdown += `## 🎯 Top Requested Tools\n\n`;
+            aggregated_analysis.top_requested_tools.forEach((tool, index) => {
+                markdown += `${index + 1}. ${tool}\n`;
+            });
+            markdown += `\n`;
+        }
+
+        // MVP Recommendations
+        if (aggregated_analysis.mvp_recommendations && aggregated_analysis.mvp_recommendations.length > 0) {
+            markdown += `## 💡 MVP Recommendations\n\n`;
+            aggregated_analysis.mvp_recommendations.forEach((rec, index) => {
+                markdown += `${index + 1}. ${rec}\n`;
+            });
+            markdown += `\n`;
+        }
+
+        // Common Issues
+        if (aggregated_analysis.common_issues && aggregated_analysis.common_issues.length > 0) {
+            markdown += `## ⚠️ Common Issues\n\n`;
+            aggregated_analysis.common_issues.forEach((issue, index) => {
+                markdown += `${index + 1}. ${issue}\n`;
+            });
+            markdown += `\n`;
+        }
+
+        // Praised Features
+        if (aggregated_analysis.common_pros && aggregated_analysis.common_pros.length > 0) {
+            markdown += `## ✅ Praised Features\n\n`;
+            aggregated_analysis.common_pros.forEach((pro, index) => {
+                markdown += `${index + 1}. ${pro}\n`;
+            });
+            markdown += `\n`;
+        }
+
+        // Action Plan
+        if (aggregated_analysis.short_action_plan) {
+            markdown += `## 📋 Action Plan\n\n`;
+            markdown += `${aggregated_analysis.short_action_plan}\n\n`;
+        }
+
+        markdown += `---\n\n`;
+        markdown += `*Report generated by AI Demand Intelligence Miner v2.0*\n`;
+
+        return markdown;
     }
 
     // Show Google search progress
@@ -1049,6 +1204,42 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Show failed URLs notification
+    function showFailedUrlsNotification(count) {
+        const notification = document.createElement('div');
+        notification.className = 'failed-urls-notification';
+        notification.innerHTML = `
+            <div style="background: rgba(244, 67, 54, 0.15); border: 1px solid rgba(244, 67, 54, 0.4); 
+                        padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 13px;">
+                <strong>⚠️ ${count} URLs failed to extract</strong>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="float: right; background: none; border: none; color: #f44336; cursor: pointer;">×</button>
+                <div style="margin-top: 8px;">
+                    <button onclick="downloadFailedUrlsReport()" 
+                            style="background: #f44336; color: white; border: none; padding: 4px 8px; 
+                                   border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Download Report
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Insert after the extraction status
+        const extractionStatus = document.getElementById('extractionStatus');
+        extractionStatus.parentNode.insertBefore(notification, extractionStatus.nextSibling);
+    }
+
+    // Download failed URLs report
+    async function downloadFailedUrlsReport() {
+        try {
+            await chrome.runtime.sendMessage({ type: 'SAVE_FAILED_URLS_REPORT' });
+            showExtractionStatus('Failed URLs report downloaded!', 'success');
+        } catch (error) {
+            console.error('Error downloading failed URLs report:', error);
+            showExtractionStatus('Error downloading report: ' + error.message, 'error');
+        }
+    }
+
     // Listen for storage changes to update stats in real-time
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local') {
@@ -1076,8 +1267,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            if (changes.dataExtraction) {
-                const extraction = changes.dataExtraction.newValue;
+            if (changes.extractionState) {
+                const extraction = changes.extractionState.newValue;
                 updateExtractionStatus(extraction);
 
                 if (extraction.isRunning) {
@@ -1090,8 +1281,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            if (changes.aiAnalysis) {
-                const analysis = changes.aiAnalysis.newValue;
+            if (changes.analysisState) {
+                const analysis = changes.analysisState.newValue;
                 updateAIStatus(analysis, analysis.perPostResults || [], analysis.aggregateResults || null);
 
                 if (analysis.isRunning) {
@@ -1103,6 +1294,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const perPost = changes.per_post_analysis ? changes.per_post_analysis.newValue : [];
                 const aggregate = changes.aggregated_analysis ? changes.aggregated_analysis.newValue : null;
                 updateAIStatus({ isRunning: false }, perPost, aggregate);
+            }
+
+            if (changes.failedUrls) {
+                const failedUrls = changes.failedUrls.newValue || [];
+                if (failedUrls.length > 0) {
+                    showFailedUrlsNotification(failedUrls.length);
+                }
             }
         }
     });
@@ -1210,6 +1408,251 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (activeMode.id === 'aiMode') {
             showAIStatus(userMessage, 'error', 8000);
         }
+    }
+
+    // Setup weight controls
+    function setupWeightControls() {
+        const weightInputs = {
+            frequency: document.getElementById('frequencyWeight'),
+            recency: document.getElementById('recencyWeight'),
+            engagement: document.getElementById('engagementWeight'),
+            emotion: document.getElementById('emotionWeight'),
+            confidence: document.getElementById('confidenceWeight')
+        };
+
+        const weightValues = {
+            frequency: document.getElementById('frequencyValue'),
+            recency: document.getElementById('recencyValue'),
+            engagement: document.getElementById('engagementValue'),
+            emotion: document.getElementById('emotionValue'),
+            confidence: document.getElementById('confidenceValue')
+        };
+
+        const resetWeightsBtn = document.getElementById('resetWeights');
+
+        // Load saved weights
+        loadWeightSettings();
+
+        // Add event listeners for weight changes
+        Object.entries(weightInputs).forEach(([key, input]) => {
+            input.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                weightValues[key].textContent = value.toFixed(1);
+                saveWeightSettings();
+            });
+        });
+
+        // Reset weights button
+        resetWeightsBtn.addEventListener('click', () => {
+            resetWeightSettings();
+        });
+    }
+
+    // Load weight settings from storage
+    async function loadWeightSettings() {
+        try {
+            const { demandWeights } = await chrome.storage.local.get(['demandWeights']);
+            const weights = demandWeights || {
+                frequency: 0.5,
+                recency: 0.2,
+                engagement: 0.15,
+                emotion: 0.1,
+                confidence: 0.05
+            };
+
+            // Update UI
+            Object.entries(weights).forEach(([key, value]) => {
+                const input = document.getElementById(`${key}Weight`);
+                const valueSpan = document.getElementById(`${key}Value`);
+                if (input && valueSpan) {
+                    input.value = value;
+                    valueSpan.textContent = value.toFixed(1);
+                }
+            });
+        } catch (error) {
+            console.error('Error loading weight settings:', error);
+        }
+    }
+
+    // Save weight settings to storage
+    async function saveWeightSettings() {
+        try {
+            const weights = {
+                frequency: parseFloat(document.getElementById('frequencyWeight').value),
+                recency: parseFloat(document.getElementById('recencyWeight').value),
+                engagement: parseFloat(document.getElementById('engagementWeight').value),
+                emotion: parseFloat(document.getElementById('emotionWeight').value),
+                confidence: parseFloat(document.getElementById('confidenceWeight').value)
+            };
+
+            await chrome.storage.local.set({ demandWeights: weights });
+        } catch (error) {
+            console.error('Error saving weight settings:', error);
+        }
+    }
+
+    // Reset weight settings to defaults
+    function resetWeightSettings() {
+        const defaultWeights = {
+            frequency: 0.5,
+            recency: 0.2,
+            engagement: 0.15,
+            emotion: 0.1,
+            confidence: 0.05
+        };
+
+        Object.entries(defaultWeights).forEach(([key, value]) => {
+            const input = document.getElementById(`${key}Weight`);
+            const valueSpan = document.getElementById(`${key}Value`);
+            if (input && valueSpan) {
+                input.value = value;
+                valueSpan.textContent = value.toFixed(1);
+            }
+        });
+
+        saveWeightSettings();
+        showAIStatus('Weight settings reset to defaults', 'success');
+    }
+
+    // Continue from last analysis
+    async function continueFromLastAnalysisProcess() {
+        try {
+            const { lastAnalysisRun, aggregated_analysis } = await chrome.storage.local.get(['lastAnalysisRun', 'aggregated_analysis']);
+
+            if (!aggregated_analysis) {
+                showAIStatus('No previous analysis found to continue from', 'error');
+                return;
+            }
+
+            showAIStatus('Continuing from last analysis...', 'success');
+            updateAIStatus({ isRunning: false }, [], aggregated_analysis);
+
+            // Show relevant buttons
+            document.getElementById('regeneratePitches').style.display = 'block';
+            document.getElementById('regeneratePlan').style.display = 'block';
+            document.getElementById('viewResults').style.display = 'block';
+            document.getElementById('openReportUI').style.display = 'block';
+            document.getElementById('exportAnalysis').style.display = 'block';
+
+        } catch (error) {
+            console.error('Error continuing from last analysis:', error);
+            showAIStatus('Error continuing from last analysis: ' + error.message, 'error');
+        }
+    }
+
+    // Regenerate pitches
+    async function regeneratePitchesProcess() {
+        try {
+            const { aggregated_analysis } = await chrome.storage.local.get(['aggregated_analysis']);
+
+            if (!aggregated_analysis || !aggregated_analysis.top_requested_tools) {
+                showAIStatus('No analysis data found to regenerate pitches from', 'error');
+                return;
+            }
+
+            const regenerateBtn = document.getElementById('regeneratePitches');
+            regenerateBtn.disabled = true;
+            regenerateBtn.innerHTML = '<div class="loading"></div>Regenerating...';
+
+            // Select top items for pitch generation
+            const selectedItems = aggregated_analysis.top_requested_tools.slice(0, 5).map(tool => ({
+                text: tool,
+                type: 'idea',
+                evidence: [{ quote: 'From previous analysis', url: 'internal' }]
+            }));
+
+            const response = await chrome.runtime.sendMessage({
+                type: 'GENERATE_PITCHES',
+                selectedItems: selectedItems
+            });
+
+            if (response.success) {
+                showAIStatus('Pitches regenerated successfully!', 'success');
+                // Store new pitches
+                await chrome.storage.local.set({
+                    lastGeneratedPitches: response.pitches,
+                    lastPitchGeneration: new Date().toISOString()
+                });
+            } else {
+                throw new Error(response.error || 'Failed to regenerate pitches');
+            }
+
+        } catch (error) {
+            console.error('Error regenerating pitches:', error);
+            showAIStatus('Error regenerating pitches: ' + error.message, 'error');
+        } finally {
+            const regenerateBtn = document.getElementById('regeneratePitches');
+            regenerateBtn.disabled = false;
+            regenerateBtn.innerHTML = '🔄 Regenerate Pitches';
+        }
+    }
+
+    // Regenerate final plan
+    async function regeneratePlanProcess() {
+        try {
+            const { lastGeneratedPitches, aggregated_analysis } = await chrome.storage.local.get(['lastGeneratedPitches', 'aggregated_analysis']);
+
+            if (!lastGeneratedPitches || lastGeneratedPitches.length === 0) {
+                showAIStatus('No pitches found. Please generate pitches first.', 'error');
+                return;
+            }
+
+            const regenerateBtn = document.getElementById('regeneratePlan');
+            regenerateBtn.disabled = true;
+            regenerateBtn.innerHTML = '<div class="loading"></div>Regenerating...';
+
+            // Use the first pitch as default
+            const chosenPitch = lastGeneratedPitches[0];
+            const selectedItems = aggregated_analysis?.top_requested_tools?.slice(0, 5).map(tool => ({
+                text: tool,
+                type: 'idea',
+                evidence: [{ quote: 'From previous analysis', url: 'internal' }]
+            })) || [];
+
+            const response = await chrome.runtime.sendMessage({
+                type: 'GENERATE_FINAL_PLAN',
+                chosenPitch: chosenPitch,
+                selectedItems: selectedItems
+            });
+
+            if (response.success) {
+                showAIStatus('Final plan regenerated successfully!', 'success');
+                // Store new plan
+                await chrome.storage.local.set({
+                    lastGeneratedPlan: response.finalPlan,
+                    lastPlanGeneration: new Date().toISOString()
+                });
+            } else {
+                throw new Error(response.error || 'Failed to regenerate final plan');
+            }
+
+        } catch (error) {
+            console.error('Error regenerating final plan:', error);
+            showAIStatus('Error regenerating final plan: ' + error.message, 'error');
+        } finally {
+            const regenerateBtn = document.getElementById('regeneratePlan');
+            regenerateBtn.disabled = false;
+            regenerateBtn.innerHTML = '🔄 Regenerate Final Plan';
+        }
+    }
+
+    // Setup security warning
+    function setupSecurityWarning() {
+        const securityWarning = document.getElementById('securityWarning');
+        const dismissBtn = document.getElementById('dismissSecurityWarning');
+
+        // Check if user has already dismissed the warning
+        chrome.storage.local.get(['securityWarningDismissed'], (result) => {
+            if (!result.securityWarningDismissed) {
+                securityWarning.style.display = 'block';
+            }
+        });
+
+        // Dismiss button functionality
+        dismissBtn.addEventListener('click', () => {
+            securityWarning.style.display = 'none';
+            chrome.storage.local.set({ securityWarningDismissed: true });
+        });
     }
 
     // Add performance monitoring

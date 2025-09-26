@@ -883,10 +883,137 @@
             outline: 2px solid #4CAF50;
             outline-offset: 2px;
         }
+
+        /* Weight Controls Styling */
+        .weight-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .weight-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius-small);
+            border: 1px solid var(--glass-border);
+        }
+
+        .weight-item label {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .weight-item input[type="range"] {
+            flex: 2;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .weight-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--success-gradient);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow-light);
+        }
+
+        .weight-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--success-gradient);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: var(--shadow-light);
+        }
+
+        .weight-item span {
+            min-width: 30px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--glass-bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Security Warning Banner */
+        .security-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        .security-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 100%;
+        }
+
+        .security-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .security-text {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .security-dismiss {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+
+        .security-dismiss:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Security Warning Banner -->
+        <div id="securityWarning" class="security-warning" style="display: none;">
+            <div class="security-content">
+                <span class="security-icon">⚠️</span>
+                <span class="security-text">
+                    <strong>Security Notice:</strong> This extension requires broad permissions to extract data from various websites. 
+                    Your API keys and extracted data are stored locally and never transmitted to third parties.
+                </span>
+                <button id="dismissSecurityWarning" class="security-dismiss">×</button>
+            </div>
+        </div>
+
         <!-- Enhanced Header with Mode Switcher -->
         <div class="header">
             <h1>🤖 AI Demand Intelligence Miner</h1>
@@ -1119,10 +1246,58 @@
                     </label>
                 </div>
                 
+                <!-- Demand Scoring Weights -->
+                <div class="sidebar-section" style="margin-top: 20px;">
+                    <h3>⚖️ Demand Scoring Weights</h3>
+                    <p style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
+                        Adjust how different factors contribute to demand scoring:
+                    </p>
+                    <div class="weight-controls">
+                        <div class="weight-item">
+                            <label for="frequencyWeight">Frequency (0-1):</label>
+                            <input type="range" id="frequencyWeight" min="0" max="1" step="0.1" value="0.5">
+                            <span id="frequencyValue">0.5</span>
+                        </div>
+                        <div class="weight-item">
+                            <label for="recencyWeight">Recency (0-1):</label>
+                            <input type="range" id="recencyWeight" min="0" max="1" step="0.1" value="0.2">
+                            <span id="recencyValue">0.2</span>
+                        </div>
+                        <div class="weight-item">
+                            <label for="engagementWeight">Engagement (0-1):</label>
+                            <input type="range" id="engagementWeight" min="0" max="1" step="0.1" value="0.15">
+                            <span id="engagementValue">0.15</span>
+                        </div>
+                        <div class="weight-item">
+                            <label for="emotionWeight">Emotion (0-1):</label>
+                            <input type="range" id="emotionWeight" min="0" max="1" step="0.1" value="0.1">
+                            <span id="emotionValue">0.1</span>
+                        </div>
+                        <div class="weight-item">
+                            <label for="confidenceWeight">Confidence (0-1):</label>
+                            <input type="range" id="confidenceWeight" min="0" max="1" step="0.1" value="0.05">
+                            <span id="confidenceValue">0.05</span>
+                        </div>
+                    </div>
+                    <button id="resetWeights" class="btn btn-secondary" style="margin-top: 12px; width: 100%;">
+                        Reset to Defaults
+                    </button>
+                </div>
+                
                 <div class="button-group">
                     <button id="startAIAnalysis" class="btn btn-primary">
                         <div class="mode-icon ai-icon"></div>
                         <span>Start AI Analysis</span>
+                    </button>
+                    <button id="continueFromLastAnalysis" class="btn btn-secondary" style="display: none;">
+                        <div class="mode-icon ai-icon"></div>
+                        <span>Continue from Last Analysis</span>
+                    </button>
+                    <button id="regeneratePitches" class="btn btn-secondary" style="display: none;">
+                        <span>🔄 Regenerate Pitches</span>
+                    </button>
+                    <button id="regeneratePlan" class="btn btn-secondary" style="display: none;">
+                        <span>🔄 Regenerate Final Plan</span>
                     </button>
                     <button id="openReport" class="btn btn-primary" style="display: none;">
                         <div class="mode-icon ai-icon"></div>

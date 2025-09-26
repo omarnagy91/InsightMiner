@@ -1,7 +1,24 @@
-// Background script for AI Demand Intelligence Miner
-let MODEL = "gpt-4o"; // Default model, can be changed in settings
+import { callOpenAI } from './background/openai.js';
+import {
+    PLATFORM_LABELS,
+    STORAGE_KEYS,
+    FILE_PREFIXES,
+    DEMAND_SCORING_DEFAULTS
+} from './background/constants.js';
+import {
+    buildQueries,
+    saveSearchSession,
+    storeSearchResults
+} from './background/search.js';
+import {
+    truncateContent,
+    limitComments,
+    persistFailedUrl,
+    saveFailedUrlsReport,
+    recordExtractionRun
+} from './background/scrape.js';
+import { analyzePosts } from './background/analyze.js';
 
-// ---- Structured Output schemas (OpenAI "Structured Outputs") ----
 const PER_POST_SCHEMA = {
     type: "object",
     properties: {
@@ -194,19 +211,19 @@ chrome.runtime.onInstalled.addListener(() => {
     // Initialize storage
     chrome.storage.local.set({
         selectedSources: ['reddit'],
-        searchResults: [],
+        [STORAGE_KEYS.searchResults]: [],
         extractionStats: {
             totalExtracted: 0,
             lastExtraction: null
         },
-        dataExtraction: {
+        [STORAGE_KEYS.extractionState]: {
             isRunning: false,
             currentTask: null,
             progress: 0,
             total: 0,
             extractedData: []
         },
-        aiAnalysis: {
+        [STORAGE_KEYS.analysisState]: {
             isRunning: false,
             progress: 0,
             total: 0,
@@ -259,137 +276,6 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
 });
 
 // ---- OpenAI API Helpers ----
-async function getKey() {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['OPENAI_API_KEY'], (result) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve(result.OPENAI_API_KEY);
-            }
-        });
-    });
-}
-
-async function getModel() {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['AI_MODEL'], (result) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve(result.AI_MODEL || MODEL);
-            }
-        });
-    });
-}
-
-async function getSearchPrompt() {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['SEARCH_PROMPT'], (result) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve(result.SEARCH_PROMPT || getDefaultSearchPrompt());
-            }
-        });
-    });
-}
-
-async function getAnalysisPrompt() {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['ANALYSIS_PROMPT'], (result) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve(result.ANALYSIS_PROMPT || getDefaultAnalysisPrompt());
-            }
-        });
-    });
-}
-
-function getDefaultSearchPrompt() {
-    return `You create precise Google queries that surface real user demand around any topic.
-
-Context:
-- Topic: {topic}
-- Platform (domain or community): {platform}  // e.g., reddit.com, stackoverflow.com, producthunt.com, quora.com, github.com, news.ycombinator.com
-
-Goal:
-Return a SINGLE Google query string that finds high-signal, discussion-style pages on {platform} for the topic above. Prioritize:
-- Genuine user questions, problem statements, requests, feature ideas, comparisons, and frustration posts
-- Recent and substantive threads (avoid announcement/meta pages)
-
-Guidelines:
-1) Use platform-aware operators:
-   - reddit: (site:reddit.com OR site:old.reddit.com) inurl:comments
-   - stackoverflow: site:stackoverflow.com (intitle:"how do i" OR intitle:"error" OR intitle:"best way")
-   - producthunt: site:producthunt.com (inurl:posts OR inurl:discussions)
-   - quora: site:quora.com (intitle:"how do" OR intitle:"what is the best")
-   - github-issues: site:github.com inurl:/issues
-   - hacker news: site:news.ycombinator.com
-   If {platform} is a general label (e.g., "forums"), choose the best domain(s) likely indexed by Google.
-
-2) Add topic expansions intelligently:
-   - Include 2–4 synonyms or adjacent terms for {topic}.
-   - Include demand phrases: "looking for", "is there a", "recommend", "best ... for", "tool for", "feature request", "how do i", "any way to".
-
-3) Boost signal, reduce noise:
-   - Prefer intitle: for question-like titles where possible.
-   - Add minus filters to remove meta/announcements/help pages typical for the platform.
-
-4) Output:
-   - Return ONLY the final Google query (one line). No commentary.
-
-Now produce the query.`;
-}
-
-function getDefaultAnalysisPrompt() {
-    return `You are a meticulous product researcher. Extract ATOMIC items from the input thread (post + comments).
-- Do NOT summarize; enumerate every distinct idea, issue, missing feature, pro, con, and emotional driver.
-- Each item MUST include at least one supporting quote (≤200 chars) and the post URL.
-- If something isn't clearly present, omit it (don't infer).
-- Keep labels concise and specific; avoid duplicates (merge near-duplicates).
-- Sentiment should be overall for the whole thread.
-
-Return JSON strictly matching the provided schema.`;
-}
-
-async function openaiJSON({ system, user, schema, model = null }) {
-    const apiKey = await getKey();
-    if (!apiKey) throw new Error("OPENAI_API_KEY not set");
-
-    // Get model from settings or use default
-    const modelToUse = model || await getModel();
-
-    const body = {
-        model: modelToUse,
-        messages: [
-            { role: "system", content: system },
-            { role: "user", content: user }
-        ],
-        // Structured outputs: guarantee schema-conformant JSON
-        response_format: { type: "json_schema", json_schema: { name: "schema", schema } },
-        temperature: 0
-    };
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`OpenAI error ${res.status}: ${errorText}`);
-    }
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || "";
-    return JSON.parse(text);
-}
 
 // ---- Text sanitization ----
 function sanitizeText(text) {
@@ -414,211 +300,20 @@ function sanitizeText(text) {
         .substring(0, 2000); // Limit to 2000 chars per post/comment
 }
 
-// ---- Per-post analysis ----
-async function buildPerPostPrompt(postObj) {
+// ---- Per-post prompt builder ----
+function buildPerPostPrompt(postObj) {
     const title = sanitizeText(postObj?.post?.title ?? "");
-    const post = sanitizeText(postObj?.post?.content ?? "");
-    const comments = (postObj?.comments ?? [])
+    const post = truncateContent(sanitizeText(postObj?.post?.content ?? ""));
+    const comments = limitComments(postObj?.comments ?? [])
         .map(c => `${c.author || "anon"}: ${sanitizeText(c.content || "")}`)
-        .filter(c => c.length > 10) // Filter out very short comments
-        .slice(0, 10) // Limit to 10 most relevant comments
         .join(" | ");
 
-    const combined = `Title: ${title} | Post: ${post} | Comments: ${comments}`;
-    const system = await getAnalysisPrompt();
-    return { system, user: combined };
-}
+    const user = `Topic: ${postObj.topic || "unknown"}\nPlatform: ${postObj.platform || "unknown"}\nURL: ${postObj.post?.url || postObj.url || "unknown"}\n\nThread:\nTitle: ${title}\n${post}\n\nComments:${comments ? ` ${comments}` : ' none'}`;
 
-async function analyzePosts(posts) {
-    const perPost = [];
-
-    // Update analysis status
-    await chrome.storage.local.set({
-        aiAnalysis: {
-            isRunning: true,
-            progress: 0,
-            total: posts.length,
-            perPostResults: [],
-            aggregateResults: null
-        }
-    });
-
-    for (let i = 0; i < posts.length; i++) {
-        try {
-            const { system, user } = await buildPerPostPrompt(posts[i]);
-            // Truncate if too long to avoid token limits
-            const truncatedUser = user.length > 65000 ?
-                user.slice(0, 32000) + "\n...[truncated]...\n" + user.slice(-32000) : user;
-
-            const result = await openaiJSON({ system, user: truncatedUser, schema: PER_POST_SCHEMA });
-
-            // Add metadata to the result
-            result.post_url = posts[i]?.post?.url ?? posts[i]?.url ?? null;
-            result.topic = posts[i]?.topic ?? "unknown";
-            result.platform = posts[i]?.platform ?? "unknown";
-            result._meta = {
-                analyzedAt: new Date().toISOString(),
-                originalData: posts[i]
-            };
-
-            perPost.push(result);
-
-            // Update progress
-            await chrome.storage.local.set({
-                aiAnalysis: {
-                    isRunning: true,
-                    progress: i + 1,
-                    total: posts.length,
-                    perPostResults: perPost,
-                    aggregateResults: null
-                }
-            });
-
-            // Brief pause to avoid rate limiting
-            await new Promise(r => setTimeout(r, 250));
-
-        } catch (error) {
-            console.error(`Error analyzing post ${i + 1}:`, error);
-            // Continue with other posts even if one fails
-        }
-    }
-
-    return perPost;
-}
-
-// ---- Aggregation layer ----
-function localTally(perPost) {
-    const allItems = {
-        ideas: [],
-        issues: [],
-        missing_features: [],
-        pros: [],
-        cons: [],
-        emotions: []
+    return {
+        system: 'You are a meticulous product researcher. Extract ATOMIC items; follow the schema exactly. No summaries.',
+        user
     };
-
-    // Collect all items from all posts
-    for (const post of perPost) {
-        if (post.items) {
-            for (const [category, items] of Object.entries(allItems)) {
-                if (post.items[category]) {
-                    allItems[category].push(...post.items[category]);
-                }
-            }
-        }
-    }
-
-    // Calculate demand scores for each item
-    const calculateDemandScore = (item, allItemsOfType) => {
-        const freq_weight = 0.5;
-        const recency_weight = 0.2;
-        const engagement_weight = 0.15;
-        const emotion_weight = 0.1;
-        const confidence_weight = 0.05;
-
-        // Count mentions (frequency)
-        const mentionCount = allItemsOfType.filter(other =>
-            other.label === item.label || other.problem === item.problem ||
-            other.feature === item.feature || other.praise === item.praise ||
-            other.complaint === item.complaint || other.driver === item.driver
-        ).length;
-
-        // Recency score (newer posts get higher scores)
-        const recencyScore = 1.0; // Simplified for now
-
-        // Engagement score (based on evidence count)
-        const engagementScore = Math.min(item.evidence.length / 3, 1.0);
-
-        // Emotion intensity
-        const emotionScore = item.intensity ? item.intensity / 5 : 0.5;
-
-        // Confidence score
-        const confidenceScore = item.confidence || 0.5;
-
-        return freq_weight * Math.log(1 + mentionCount) +
-            recency_weight * recencyScore +
-            engagement_weight * engagementScore +
-            emotion_weight * emotionScore +
-            confidence_weight * confidenceScore;
-    };
-
-    // Calculate scores and sort
-    const scoredItems = {};
-    for (const [category, items] of Object.entries(allItems)) {
-        scoredItems[category] = items.map(item => ({
-            ...item,
-            demand_score: calculateDemandScore(item, items),
-            mention_count: items.filter(other =>
-                other.label === item.label || other.problem === item.problem ||
-                other.feature === item.feature || other.praise === item.praise ||
-                other.complaint === item.complaint || other.driver === item.driver
-            ).length
-        })).sort((a, b) => b.demand_score - a.demand_score);
-    }
-
-    return scoredItems;
-}
-
-async function aggregateWithGPT(perPost) {
-    const summary = localTally(perPost);
-
-    // Create a simplified summary for the GPT prompt
-    const simplifiedSummary = {
-        top_ideas: summary.ideas.slice(0, 10).map(item => ({
-            label: item.label,
-            what: item.what,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        })),
-        top_issues: summary.issues.slice(0, 10).map(item => ({
-            problem: item.problem,
-            context: item.context,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        })),
-        top_missing_features: summary.missing_features.slice(0, 10).map(item => ({
-            feature: item.feature,
-            why_needed: item.why_needed,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        })),
-        top_pros: summary.pros.slice(0, 10).map(item => ({
-            praise: item.praise,
-            tool_or_flow: item.tool_or_flow,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        })),
-        top_cons: summary.cons.slice(0, 10).map(item => ({
-            complaint: item.complaint,
-            tool_or_flow: item.tool_or_flow,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        })),
-        top_emotions: summary.emotions.slice(0, 10).map(item => ({
-            driver: item.driver,
-            why: item.why,
-            intensity: item.intensity,
-            demand_score: item.demand_score,
-            mention_count: item.mention_count
-        }))
-    };
-
-    const system = "You are a pragmatic product strategist. Analyze multi-platform data to identify MVP opportunities. Be concise and actionable.";
-    const user = `Based on the extracted insights from multiple platforms, create a strategic action plan:
-
-1) Top 10 MVP ideas (1-line each; why they rank; feasible in 1 day)
-2) Top 6 problems to solve
-3) Top 6 praised features to emulate  
-4) Top 6 emotional drivers to emphasize
-5) A 5-step 24h action plan
-
-Data summary:
-${JSON.stringify(simplifiedSummary, null, 2)}`;
-
-    const agg = await openaiJSON({ system, user, schema: AGG_SCHEMA });
-    agg._counters = summary;
-    agg._meta = { generatedAt: new Date().toISOString() };
-    return agg;
 }
 
 // ---- Pitch Generation ----
@@ -655,7 +350,12 @@ ${JSON.stringify(selectedItems, null, 2)}`;
         required: ["pitches"]
     };
 
-    const result = await openaiJSON({ system, user, schema: pitchSchema, temperature: 0.6 });
+    const result = await callOpenAI({
+        system,
+        user,
+        schema: pitchSchema,
+        temperature: 0.6
+    });
     return result.pitches;
 }
 
@@ -801,75 +501,39 @@ Return JSON exactly matching the provided schema.`;
         required: ["elevator_pitch", "target_user_persona", "tech_stack", "prd"]
     };
 
-    const result = await openaiJSON({ system, user, schema: finalSchema, temperature: 0.3 });
+    const result = await callOpenAI({
+        system,
+        user,
+        schema: finalSchema,
+        temperature: 0.3
+    });
     return result;
 }
 
 // ---- Search Query Generation ----
 async function generateSearchQueries(topic, sources) {
     try {
-        const queries = [];
+        const queries = await buildQueries({ topic, sources });
 
-        for (const source of sources) {
-            const platformName = getPlatformDisplayName(source);
-            let query = '';
-
-            // Use AI generation for all platforms with the new generic prompt
-            const searchPrompt = await getSearchPrompt();
-            const systemPrompt = searchPrompt.replace('{platform}', platformName);
-            const userPrompt = `Topic: ${topic}`;
-
-            try {
-                query = await openaiText({ system: systemPrompt, user: userPrompt });
-            } catch (aiError) {
-                console.error(`AI query generation failed for ${source}, using fallback:`, aiError);
-                // Fallback to basic patterns if AI fails
-                switch (source) {
-                    case 'reddit':
-                        query = `(site:reddit.com OR site:old.reddit.com) inurl:comments "${topic}" (recommend OR suggest OR "best" OR "looking for")`;
-                        break;
-                    case 'stackoverflow':
-                        query = `site:stackoverflow.com "${topic}" (recommend OR suggest OR "best" OR "which" OR "looking for")`;
-                        break;
-                    case 'github':
-                        query = `site:github.com "${topic}" (issue OR discussion OR "feature request")`;
-                        break;
-                    case 'devto':
-                        query = `site:dev.to "${topic}" (recommend OR suggest OR "best" OR "which")`;
-                        break;
-                    case 'medium':
-                        query = `site:medium.com "${topic}" (recommend OR suggest OR "best" OR "which")`;
-                        break;
-                    default:
-                        query = `site:${source}.com "${topic}" (discussion OR question OR recommendation)`;
-                }
-            }
-
-            queries.push({
-                source: source,
-                platform: platformName,
-                query: query.trim(),
-                topic: topic
-            });
-        }
-
-        // Save generated queries
         await chrome.storage.local.set({
-            generatedQueries: queries,
-            lastQueryGeneration: new Date().toISOString()
+            [STORAGE_KEYS.generatedQueries]: queries,
+            [STORAGE_KEYS.searchResults]: [],
+            lastQueryGeneration: new Date().toISOString(),
+            lastSearchTopic: topic,
+            lastSearchSynonyms: queries[0]?.synonyms || []
         });
 
-        // Show notification that queries were generated
         showNotification(
             'Search Queries Generated',
-            `Generated ${queries.length} optimized search queries for ${sources.length} platforms. Starting Google searches...`,
+            `Generated ${queries.length} focused queries for ${sources.length} platforms. Gathering results...`,
             'basic'
         );
 
-        // Execute Google searches for each query
-        await executeGoogleSearches(queries);
+        const results = await executeGoogleSearches(queries);
+        await storeSearchResults(results);
+        const session = await saveSearchSession({ topic, queries, results });
 
-        return queries;
+        return { queries, results, session };
     } catch (error) {
         console.error('Error generating search queries:', error);
         throw error;
@@ -878,148 +542,76 @@ async function generateSearchQueries(topic, sources) {
 
 // Execute Google searches for generated queries
 async function executeGoogleSearches(queries) {
-    try {
-        console.log(`Starting Google searches for ${queries.length} queries`);
-
-        // Initialize progress tracking
-        await chrome.storage.local.set({
-            googleSearchProgress: {
-                current: 0,
-                total: queries.length,
-                currentQuery: 'Starting...'
-            }
-        });
-
-        for (let i = 0; i < queries.length; i++) {
-            const query = queries[i];
-            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}`;
-
-            console.log(`Opening Google search ${i + 1}/${queries.length}: ${query.query}`);
-
-            // Update progress
-            await chrome.storage.local.set({
-                googleSearchProgress: {
-                    current: i,
-                    total: queries.length,
-                    currentQuery: query.query
-                }
-            });
-
-            // Open Google search in new tab
-            const tab = await chrome.tabs.create({
-                url: searchUrl,
-                active: false
-            });
-
-            // Wait for page to load
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            try {
-                // Extract search results
-                const results = await chrome.tabs.sendMessage(tab.id, {
-                    action: 'extract',
-                    searchQuery: query.query,
-                    platform: query.source
-                });
-
-                if (results && results.success && results.results && Array.isArray(results.results)) {
-                    console.log(`Extracted ${results.results.length} results for ${query.platform}`);
-
-                    // Store results with platform information
-                    const stored = await chrome.storage.local.get(['searchResults']);
-                    const existingResults = stored.searchResults || [];
-
-                    const newResults = results.results.map(result => ({
-                        ...result,
-                        platform: query.source,
-                        platformName: query.platform,
-                        searchQuery: query.query,
-                        topic: query.topic
-                    }));
-
-                    await chrome.storage.local.set({
-                        searchResults: [...existingResults, ...newResults]
-                    });
-                } else {
-                    console.log(`No results extracted from ${query.platform} - results:`, results);
-                }
-            } catch (extractError) {
-                console.error(`Error extracting results from ${query.platform}:`, extractError);
-            }
-
-            // Close the tab after extraction
-            try {
-                await chrome.tabs.remove(tab.id);
-            } catch (closeError) {
-                console.error(`Error closing tab:`, closeError);
-            }
-
-            // Small delay between searches to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1000));
+    const results = [];
+    await chrome.storage.local.set({
+        googleSearchProgress: {
+            current: 0,
+            total: queries.length,
+            currentQuery: 'Starting...'
         }
-
-        // Update final progress
-        await chrome.storage.local.set({
-            googleSearchProgress: {
-                current: queries.length,
-                total: queries.length,
-                currentQuery: 'Completed!'
-            }
-        });
-
-        // Show completion notification
-        const finalResults = await chrome.storage.local.get(['searchResults']);
-        const totalResults = finalResults.searchResults?.length || 0;
-
-        showNotification(
-            'Google Searches Completed',
-            `Completed ${queries.length} Google searches and extracted ${totalResults} total results. Switch to Extraction mode to process the URLs.`,
-            'basic'
-        );
-
-        console.log(`Completed Google searches. Total results: ${totalResults}`);
-
-    } catch (error) {
-        console.error('Error executing Google searches:', error);
-        showNotification(
-            'Google Search Error',
-            `Error occurred during Google searches: ${error.message}`,
-            'basic'
-        );
-    }
-}
-
-async function openaiText({ system, user }) {
-    const apiKey = await getKey();
-    if (!apiKey) throw new Error("OPENAI_API_KEY not set");
-
-    const modelToUse = await getModel();
-
-    const body = {
-        model: modelToUse,
-        messages: [
-            { role: "system", content: system },
-            { role: "user", content: user }
-        ],
-        temperature: 0.3
-    };
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
     });
 
-    if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`OpenAI error ${res.status}: ${errorText}`);
+    for (let i = 0; i < queries.length; i++) {
+        const query = queries[i];
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}`;
+
+        await chrome.storage.local.set({
+            googleSearchProgress: {
+                current: i,
+                total: queries.length,
+                currentQuery: query.query
+            }
+        });
+
+        const tab = await chrome.tabs.create({ url: searchUrl, active: false });
+        await new Promise(resolve => setTimeout(resolve, 3500));
+
+        try {
+            const extraction = await chrome.tabs.sendMessage(tab.id, {
+                action: 'extract',
+                searchQuery: query.query,
+                platform: query.platform
+            });
+
+            if (extraction?.success && Array.isArray(extraction.results)) {
+                const decorated = extraction.results.map(result => ({
+                    ...result,
+                    platform: query.platform,
+                    platformLabel: query.platformLabel,
+                    topic: query.topic,
+                    query: query.query,
+                    timestamp: new Date().toISOString()
+                }));
+                results.push(...decorated);
+            }
+        } catch (error) {
+            console.error(`Search extraction failed for ${query.platform}:`, error);
+        }
+
+        try {
+            await chrome.tabs.remove(tab.id);
+        } catch (closeError) {
+            console.error('Error closing search tab:', closeError);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1200));
     }
 
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    await chrome.storage.local.set({
+        googleSearchProgress: {
+            current: queries.length,
+            total: queries.length,
+            currentQuery: 'Completed!'
+        }
+    });
+
+    showNotification(
+        'Google Searches Completed',
+        `Collected ${results.length} results. You can jump straight to Extraction or reuse them later.`,
+        'basic'
+    );
+
+    return results;
 }
 
 function getPlatformDisplayName(source) {
@@ -1043,28 +635,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
             if (request.type === 'GENERATE_SEARCH_QUERIES') {
                 // Generate AI-powered search queries
-                const queries = await generateSearchQueries(request.topic, request.sources);
-                sendResponse({ success: true, queries });
+                const { queries, results, session } = await generateSearchQueries(request.topic, request.sources);
+                sendResponse({ success: true, queries, results, session });
 
             } else if (request.type === 'ANALYZE') {
-                // Start AI analysis
-                const perPost = await analyzePosts(request.posts || []);
-                const aggregate = await aggregateWithGPT(perPost);
+                const { posts = [], weights = DEMAND_SCORING_DEFAULTS } = request;
 
-                // Save results
                 await chrome.storage.local.set({
-                    per_post_analysis: perPost,
-                    aggregated_analysis: aggregate,
-                    aiAnalysis: {
-                        isRunning: false,
-                        progress: perPost.length,
-                        total: perPost.length,
-                        perPostResults: perPost,
-                        aggregateResults: aggregate
+                    [STORAGE_KEYS.analysisState]: {
+                        isRunning: true,
+                        progress: 0,
+                        total: posts.length,
+                        perPostResults: [],
+                        aggregateResults: null
                     }
                 });
 
-                sendResponse({ ok: true, perPost, aggregate });
+                const run = await analyzePosts({
+                    posts,
+                    schema: PER_POST_SCHEMA,
+                    buildPrompt: buildPerPostPrompt,
+                    weights,
+                    onProgress: async (current) => {
+                        await chrome.storage.local.set({
+                            [STORAGE_KEYS.analysisState]: {
+                                isRunning: true,
+                                progress: current,
+                                total: posts.length,
+                                perPostResults: [],
+                                aggregateResults: null
+                            }
+                        });
+                    }
+                });
+
+                sendResponse({ ok: true, run });
 
             } else if (request.type === 'RESULTS_EXTRACTED') {
                 // Update extraction stats
@@ -1123,7 +728,7 @@ async function handleDataExtraction(request, sendResponse) {
 
         // Update extraction status
         await chrome.storage.local.set({
-            dataExtraction: {
+            [STORAGE_KEYS.extractionState]: {
                 isRunning: true,
                 currentTask: 'Data Extraction',
                 progress: 0,
@@ -1202,8 +807,9 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
     for (let i = 0; i < urls.length; i++) {
         try {
             // Check if extraction was stopped before processing each URL
-            const currentState = await chrome.storage.local.get(['dataExtraction']);
-            if (!currentState.dataExtraction.isRunning) {
+            const currentState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+            const extractionState = currentState[STORAGE_KEYS.extractionState];
+            if (!extractionState?.isRunning) {
                 console.log('Extraction stopped by user - terminating process');
                 if (currentTab) {
                     try {
@@ -1217,8 +823,8 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
 
             // Update progress with current URL
             await chrome.storage.local.set({
-                dataExtraction: {
-                    ...currentState.dataExtraction,
+                [STORAGE_KEYS.extractionState]: {
+                    ...extractionState,
                     progress: i,
                     currentUrl: urls[i],
                     currentIndex: i + 1
@@ -1240,8 +846,8 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
                 loadTime += checkInterval;
 
                 // Check if extraction was stopped during loading
-                const stopCheck = await chrome.storage.local.get(['dataExtraction']);
-                if (!stopCheck.dataExtraction.isRunning) {
+                const stopCheck = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+                if (!stopCheck[STORAGE_KEYS.extractionState]?.isRunning) {
                     console.log('Extraction stopped during page load - terminating process');
                     if (currentTab) {
                         try {
@@ -1255,8 +861,8 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
             }
 
             // Check again before extracting data
-            const preExtractState = await chrome.storage.local.get(['dataExtraction']);
-            if (!preExtractState.dataExtraction.isRunning) {
+            const preExtractState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+            if (!preExtractState[STORAGE_KEYS.extractionState]?.isRunning) {
                 console.log('Extraction stopped before data extraction - terminating process');
                 if (currentTab) {
                     try {
@@ -1364,8 +970,9 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
             }
 
             // Check if extraction was stopped after data extraction
-            const postExtractState = await chrome.storage.local.get(['dataExtraction']);
-            if (!postExtractState.dataExtraction.isRunning) {
+            const postExtractState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+            const extractionAfter = postExtractState[STORAGE_KEYS.extractionState];
+            if (!extractionAfter?.isRunning) {
                 console.log('Extraction stopped after data extraction - terminating process');
                 if (currentTab) {
                     try {
@@ -1386,16 +993,17 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
                 };
 
                 // Add to extracted data and save immediately
-                const updatedData = [...(postExtractState.dataExtraction.extractedData || []), newData];
+                const updatedData = [...(extractionAfter?.extractedData || []), newData];
                 await chrome.storage.local.set({
-                    dataExtraction: {
-                        ...postExtractState.dataExtraction,
+                    [STORAGE_KEYS.extractionState]: {
+                        ...extractionAfter,
                         extractedData: updatedData
                     }
                 });
 
                 console.log(`Successfully extracted data from ${urls[i]} (${platform})`);
             } else {
+                persistFailedUrl(urls[i], results?.error || 'Unknown error');
                 console.log(`Failed to extract data from ${urls[i]} (${platform})`);
             }
 
@@ -1424,32 +1032,26 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
     }
 
     // Check if extraction was completed normally or stopped
-    const finalState = await chrome.storage.local.get(['dataExtraction']);
-    if (finalState.dataExtraction.isRunning) {
-        // Save extracted data as JSON (normal completion)
-        await saveDataAsJSON(finalState.dataExtraction.extractedData);
+    const finalState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+    const extractionState = finalState[STORAGE_KEYS.extractionState];
+    if (extractionState?.isRunning) {
+        const run = {
+            id: `extraction_${Date.now()}`,
+            startedAt: finalState[STORAGE_KEYS.extractionState]?.startTime || new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            total: urls.length,
+            extracted: extractionState.extractedData.length,
+            items: extractionState.extractedData
+        };
 
-        // Update extraction status - completed
-        await chrome.storage.local.set({
-            dataExtraction: {
-                isRunning: false,
-                currentTask: null,
-                progress: urls.length,
-                total: urls.length,
-                currentUrl: '',
-                currentIndex: urls.length,
-                completed: true,
-                endTime: new Date().toISOString(),
-                extractedData: []
-            }
-        });
+        await recordExtractionRun(run);
+        await saveFailedUrlsReport();
 
-        console.log(`Data extraction completed. Extracted ${finalState.dataExtraction.extractedData.length} items.`);
+        console.log(`Data extraction completed. Extracted ${run.extracted} items.`);
 
-        // Show completion notification
         showNotification(
             'Data Extraction Completed',
-            `Successfully extracted ${finalState.dataExtraction.extractedData.length} items from ${urls.length} URLs. Switch to AI Analysis mode to analyze the data.`,
+            `Successfully extracted ${run.extracted} items from ${urls.length} URLs. Switch to AI Analysis mode to analyze the data.`,
             'basic'
         );
     }
@@ -1467,20 +1069,19 @@ function getPlatformFromUrl(url) {
 
 // Save extracted data as JSON
 async function saveDataAsJSON(data, isStopped = false) {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const suffix = isStopped ? '_stopped' : '_completed';
-    const filename = `data_extraction_${timestamp}${suffix}.json`;
+    // Use the new storage system for versioned saves
+    const run = {
+        id: `extraction_${Date.now()}${isStopped ? '_stopped' : '_completed'}`,
+        startedAt: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        totalUrls: Array.isArray(data) ? data.length : (data.totalUrls || 0),
+        extractedCount: Array.isArray(data) ? data.length : (data.extractedCount || 0),
+        failedCount: 0,
+        extractedData: Array.isArray(data) ? data : (data.extractedData || []),
+        failedUrls: data.failedUrls || []
+    };
 
-    // Create data URL instead of blob URL (works in service workers)
-    const jsonData = JSON.stringify(data, null, 2);
-    const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(jsonData)}`;
-
-    await chrome.downloads.download({
-        url: dataUrl,
-        filename: filename,
-        conflictAction: 'overwrite',
-        saveAs: true
-    });
+    await recordExtractionRun(run);
 }
 
 // Handle extracted Reddit data
@@ -1491,9 +1092,10 @@ function handleRedditDataExtracted(request) {
 // Handle stop and save request
 async function handleStopAndSave(sendResponse) {
     try {
-        const currentState = await chrome.storage.local.get(['dataExtraction']);
+        const currentState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+        const extractionState = currentState[STORAGE_KEYS.extractionState];
 
-        if (!currentState.dataExtraction.isRunning) {
+        if (!extractionState?.isRunning) {
             sendResponse({ success: false, error: 'No extraction is currently running' });
             return;
         }
@@ -1502,8 +1104,8 @@ async function handleStopAndSave(sendResponse) {
 
         // Stop the extraction immediately
         await chrome.storage.local.set({
-            dataExtraction: {
-                ...currentState.dataExtraction,
+            [STORAGE_KEYS.extractionState]: {
+                ...extractionState,
                 isRunning: false,
                 stopped: true,
                 endTime: new Date().toISOString()
@@ -1539,31 +1141,23 @@ async function handleStopAndSave(sendResponse) {
         }
 
         // Save the current extracted data
-        if (currentState.dataExtraction.extractedData && currentState.dataExtraction.extractedData.length > 0) {
-            await saveDataAsJSON(currentState.dataExtraction.extractedData, true);
-
-            // Clear the extracted data
-            await chrome.storage.local.set({
-                dataExtraction: {
-                    isRunning: false,
-                    currentTask: null,
-                    progress: 0,
-                    total: 0,
-                    currentUrl: '',
-                    stopped: true,
-                    endTime: new Date().toISOString(),
-                    extractedData: []
-                }
+        if (extractionState.extractedData && extractionState.extractedData.length > 0) {
+            await recordExtractionRun({
+                id: `extraction_${Date.now()}`,
+                stopped: true,
+                savedAt: new Date().toISOString(),
+                extracted: extractionState.extractedData.length,
+                items: extractionState.extractedData
             });
 
             sendResponse({
                 success: true,
-                message: `Extraction stopped and saved ${currentState.dataExtraction.extractedData.length} items`
+                message: `Extraction stopped and saved ${extractionState.extractedData.length} items`
             });
         } else {
             // Clear the extraction state even if no data was extracted
             await chrome.storage.local.set({
-                dataExtraction: {
+                [STORAGE_KEYS.extractionState]: {
                     isRunning: false,
                     currentTask: null,
                     progress: 0,
