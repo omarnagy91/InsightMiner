@@ -202,6 +202,7 @@
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
             if (request.action === 'extract') {
+                console.log(`Google extraction requested for page ${request.page || 1}, query: ${request.searchQuery}`);
                 extractAndSave().then(() => {
                     sendResponse({ success: true });
                 }).catch((error) => {

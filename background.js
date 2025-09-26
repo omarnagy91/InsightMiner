@@ -540,77 +540,91 @@ async function generateSearchQueries(topic, sources) {
     }
 }
 
-// Execute Google searches for generated queries
+// Execute Google searches for generated queries with multi-page support
 async function executeGoogleSearches(queries) {
     const results = [];
+    const maxPagesPerQuery = 3; // Extract from up to 3 pages per query
+
     await chrome.storage.local.set({
         googleSearchProgress: {
             current: 0,
-            total: queries.length,
+            total: queries.length * maxPagesPerQuery,
             currentQuery: 'Starting...'
         }
     });
 
     for (let i = 0; i < queries.length; i++) {
         const query = queries[i];
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}`;
 
-        await chrome.storage.local.set({
-            googleSearchProgress: {
-                current: i,
-                total: queries.length,
-                currentQuery: query.query
-            }
-        });
+        for (let page = 0; page < maxPagesPerQuery; page++) {
+            const startParam = page * 10; // Google shows 10 results per page
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}&start=${startParam}`;
 
-        const tab = await chrome.tabs.create({ url: searchUrl, active: false });
-        await new Promise(resolve => setTimeout(resolve, 3500));
-
-        try {
-            const extraction = await chrome.tabs.sendMessage(tab.id, {
-                action: 'extract',
-                searchQuery: query.query,
-                platform: query.platform
+            await chrome.storage.local.set({
+                googleSearchProgress: {
+                    current: (i * maxPagesPerQuery) + page,
+                    total: queries.length * maxPagesPerQuery,
+                    currentQuery: `${query.query} (Page ${page + 1})`
+                }
             });
 
-            if (extraction?.success && Array.isArray(extraction.results)) {
-                const decorated = extraction.results.map(result => ({
-                    ...result,
+            const tab = await chrome.tabs.create({ url: searchUrl, active: false });
+            await new Promise(resolve => setTimeout(resolve, 3500));
+
+            try {
+                const extraction = await chrome.tabs.sendMessage(tab.id, {
+                    action: 'extract',
+                    searchQuery: query.query,
                     platform: query.platform,
-                    platformLabel: query.platformLabel,
-                    topic: query.topic,
-                    query: query.query,
-                    timestamp: new Date().toISOString()
-                }));
-                results.push(...decorated);
+                    page: page + 1
+                });
+
+                if (extraction?.success && Array.isArray(extraction.results)) {
+                    const decorated = extraction.results.map(result => ({
+                        ...result,
+                        platform: query.platform,
+                        platformLabel: query.platformLabel,
+                        topic: query.topic,
+                        query: query.query,
+                        page: page + 1,
+                        timestamp: new Date().toISOString()
+                    }));
+                    results.push(...decorated);
+                    console.log(`Extracted ${extraction.results.length} results from page ${page + 1} of ${query.platform}`);
+                } else {
+                    console.log(`No results found on page ${page + 1} for ${query.platform}, stopping pagination`);
+                    break; // Stop pagination if no results found
+                }
+            } catch (error) {
+                console.error(`Search extraction failed for ${query.platform} page ${page + 1}:`, error);
             }
-        } catch (error) {
-            console.error(`Search extraction failed for ${query.platform}:`, error);
-        }
 
-        try {
-            await chrome.tabs.remove(tab.id);
-        } catch (closeError) {
-            console.error('Error closing search tab:', closeError);
-        }
+            try {
+                await chrome.tabs.remove(tab.id);
+            } catch (closeError) {
+                console.error('Error closing search tab:', closeError);
+            }
 
-        await new Promise(resolve => setTimeout(resolve, 1200));
+            // Small delay between pages
+            await new Promise(resolve => setTimeout(resolve, 1200));
+        }
     }
 
     await chrome.storage.local.set({
         googleSearchProgress: {
-            current: queries.length,
-            total: queries.length,
+            current: queries.length * maxPagesPerQuery,
+            total: queries.length * maxPagesPerQuery,
             currentQuery: 'Completed!'
         }
     });
 
     showNotification(
         'Google Searches Completed',
-        `Collected ${results.length} results. You can jump straight to Extraction or reuse them later.`,
+        `Collected ${results.length} results from multiple pages. You can jump straight to Extraction or reuse them later.`,
         'basic'
     );
 
+    console.log(`Total results extracted: ${results.length}`);
     return results;
 }
 
@@ -825,9 +839,10 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
             await chrome.storage.local.set({
                 [STORAGE_KEYS.extractionState]: {
                     ...extractionState,
-                    progress: i,
+                    progress: i + 1, // Progress should be 1-based
                     currentUrl: urls[i],
-                    currentIndex: i + 1
+                    currentIndex: i + 1,
+                    currentTask: `Extracting from ${urls[i]}`
                 }
             });
 
@@ -879,6 +894,8 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
             let results = null;
 
             try {
+                console.log(`Sending extraction message to tab ${currentTab.id} for platform ${platform}`);
+
                 if (platform === 'reddit') {
                     results = await chrome.tabs.sendMessage(currentTab.id, {
                         action: 'extractRedditData',
@@ -909,9 +926,33 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
                         extractComments: extractComments,
                         extractMetadata: extractMetadata
                     });
+                } else {
+                    // Generic extraction for unknown platforms
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extract',
+                        platform: platform,
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
                 }
+
+                console.log(`Received response from tab ${currentTab.id} for ${platform}:`, results);
             } catch (extractError) {
                 console.error(`Error extracting data from ${urls[i]}:`, extractError);
+
+                // Try fallback extraction with generic action
+                try {
+                    console.log(`Trying fallback extraction for ${platform}`);
+                    results = await chrome.tabs.sendMessage(currentTab.id, {
+                        action: 'extract',
+                        platform: platform,
+                        extractComments: extractComments,
+                        extractMetadata: extractMetadata
+                    });
+                    console.log(`Fallback extraction successful for ${platform}:`, results);
+                } catch (fallbackError) {
+                    console.error(`Fallback extraction also failed for ${platform}:`, fallbackError);
+                }
 
                 // Check if it's a CAPTCHA or manual intervention issue
                 if (extractError.message.includes('Could not establish connection') ||
@@ -997,11 +1038,13 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
                 await chrome.storage.local.set({
                     [STORAGE_KEYS.extractionState]: {
                         ...extractionAfter,
-                        extractedData: updatedData
+                        extractedData: updatedData,
+                        progress: i + 1, // Update progress after successful extraction
+                        currentTask: `Extracted ${updatedData.length} items`
                     }
                 });
 
-                console.log(`Successfully extracted data from ${urls[i]} (${platform})`);
+                console.log(`Successfully extracted data from ${urls[i]} (${platform}) - Total extracted: ${updatedData.length}`);
             } else {
                 persistFailedUrl(urls[i], results?.error || 'Unknown error');
                 console.log(`Failed to extract data from ${urls[i]} (${platform})`);

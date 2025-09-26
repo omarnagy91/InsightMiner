@@ -1,6 +1,6 @@
-# AI Demand Intelligence Miner Chrome Extension
+# AI Demand Intelligence Miner Chrome Extension v2.0
 
-A powerful Chrome extension that extracts insights from multiple platforms (Reddit, Stack Overflow, GitHub, Dev.to, Medium), analyzes them with AI, and identifies market demands and opportunities. Features a modern three-mode interface with source selection, data extraction, and AI analysis capabilities.
+A powerful Chrome extension that extracts insights from multiple platforms (Reddit, Stack Overflow, GitHub, Dev.to, Medium, Product Hunt, Quora, Hacker News), analyzes them with AI, and identifies market demands and opportunities. Features a modern three-mode interface with AI-powered search query generation, advanced data extraction, and comprehensive AI analysis capabilities.
 
 ## ✨ Features
 
@@ -13,48 +13,61 @@ A powerful Chrome extension that extracts insights from multiple platforms (Redd
 - **Responsive Design**: Optimized for all screen sizes
 - **Real-time Updates**: Live progress tracking and status updates
 
-### 🎯 AI-Powered Search Query Generation
-- **Smart Query Creation**: AI generates optimized Google search queries for each selected platform
-- **Platform-Specific Queries**: Tailored search terms for Reddit, Stack Overflow, GitHub, Dev.to, and Medium
-- **Customizable Prompts**: Modify search query generation prompts in settings
+### 🎯 AI-Powered Search Query Generation (v2.0)
+- **Dork Template Registry**: Pre-built search templates for each platform with demand phrases
+- **Synonym Injection**: AI generates 1-2 relevant synonyms for each topic automatically
+- **Platform-Specific Queries**: Tailored search terms for Reddit, Stack Overflow, GitHub, Dev.to, Medium, Product Hunt, Quora, and Hacker News
+- **Multi-Page Search**: Automatically extracts results from multiple Google search pages
 - **Topic-Based Generation**: Enter any topic to generate relevant search queries
-- **Multi-Platform Support**: Generate queries for multiple platforms simultaneously
+- **Real-time Progress**: Live tracking of Google search execution
+- **Structured Results**: Organized search results with platform categorization
 
-### 📊 Multi-Platform Data Extraction
+### 📊 Multi-Platform Data Extraction (v2.0)
 - **Reddit**: Extract posts, comments, scores, and metadata
 - **Stack Overflow**: Extract questions, answers, comments, and votes
 - **GitHub**: Extract issues, pull requests, discussions, and releases
 - **Dev.to**: Extract articles, comments, and reactions
 - **Medium**: Extract articles and responses
+- **Product Hunt**: Extract product discussions and feedback
+- **Quora**: Extract questions, answers, and discussions
+- **Hacker News**: Extract posts, comments, and discussions
+- **Content Controls**: Comment capping (top 10), content truncation (32k chars)
+- **Error Tracking**: Failed URL reporting with detailed error analysis
 - **Automated Extraction**: Process URLs from AI-generated search results
 - **Tab Management**: Efficient resource usage with automatic tab closing
-- **JSON Export**: Structured data export for all platforms
+- **Versioned Storage**: Organized data persistence with run metadata
 - **Stop-and-Save**: Save extracted data when stopping midway
 
-### 🤖 Advanced AI Analysis with OpenAI
+### 🤖 Advanced AI Analysis with OpenAI (v2.0)
 - **Multiple AI Models**: Choose from GPT-4o, GPT-4o Mini, GPT-4 Turbo, or GPT-3.5 Turbo
-- **Customizable Prompts**: Modify analysis prompts to focus on specific aspects
+- **Responses API Integration**: Structured JSON outputs with schema validation
+- **Concurrency Control**: Optimized API calls with retry logic and exponential backoff
 - **Two-layer Analysis**: Per-item analysis followed by aggregate insights
-- **Structured Outputs**: Guaranteed JSON schema compliance
+- **Fuzzy Deduplication**: Smart merging of near-duplicate items with evidence tracking
+- **Configurable Demand Scoring**: Customizable weights for frequency, recency, engagement, emotion, and confidence
 - **Demand Pattern Identification**: Find most requested AI tools across all platforms
 - **MVP Recommendations**: Generate actionable product ideas
 - **Emotional Driver Analysis**: Understand user motivations and pain points
 - **Action Plan Generation**: 24-hour implementation roadmap
+- **Continue from Last Analysis**: Resume previous analysis sessions
+- **Regeneration Controls**: Regenerate pitches and final plans
 - **Enhanced Results Display**: Detailed grid layout with categorized insights
 - **Full-Screen Analysis Tab**: Open detailed results in a dedicated browser tab
 - **Interactive Statistics**: Real-time metrics and confidence scores
-- **Export Capabilities**: JSON export with full analysis data
+- **Multiple Export Formats**: JSON and Markdown export options
 - **Share Functionality**: Copy analysis summaries to clipboard
 - **Report Loading**: Open previously exported reports in the analysis tab
 - **Secure API Key Management**: Local storage with customizable settings
 
-### 📊 Advanced Data Management
-- Temporary storage of all extracted data
-- Real-time statistics display
-- Export all collected data to CSV/JSON format
-- Clear all data functionality
-- Progress tracking with visual indicators
-- Incremental data saving (no data loss)
+### 📊 Advanced Data Management (v2.0)
+- **Versioned Storage**: Organized data persistence with run metadata and timestamps
+- **Real-time Statistics**: Live updates of extraction progress and results
+- **Multiple Export Formats**: CSV, JSON, and Markdown export options
+- **Failed URL Tracking**: Comprehensive error reporting with downloadable reports
+- **Platform Counts**: Detailed extraction metadata with success rates
+- **Progress Tracking**: Visual indicators with real-time updates
+- **Incremental Data Saving**: No data loss with automatic versioning
+- **Security Warning**: Dismissible privacy notice for transparency
 
 ## Installation
 
@@ -66,49 +79,70 @@ A powerful Chrome extension that extracts insights from multiple platforms (Redd
 
 ## 🚀 Usage
 
-### 🎯 Getting Started
+### 🎯 Getting Started (v2.0)
 
 1. **Install the extension** (see Installation section below)
 2. **Set up OpenAI API key** (see AI Analysis Setup below)
 3. **Click the extension icon** in your Chrome toolbar to open the sidebar
-4. **Choose your mode**: Toggle between Google, Reddit, and AI Analysis modes
+4. **Choose your mode**: Toggle between Sources, Extraction, and AI Analysis modes
 5. **Follow the themed interface** for your selected mode
 6. **Keep the sidebar open** while browsing for continuous access to features
 
-### 🔍 Google Mode - Search Results Extraction
+### 🆕 What's New in v2.0
 
-1. **Navigate to Google** and perform a search
-2. **Switch to Google mode** (blue theme with Google icons)
-3. **Click "Extract Current Page Results"** to collect all visible search results
-4. **Navigate to other pages** or perform new searches
-5. **Repeat the extraction process** for additional results
-6. **Click "Export All to CSV"** when ready to download all collected data
+- **AI-Powered Search Generation**: Enter any topic to generate optimized search queries
+- **Multi-Page Google Search**: Automatically extracts results from multiple search pages
+- **Enhanced Platform Support**: Added Product Hunt, Quora, and Hacker News
+- **Smart Content Processing**: Comment capping and content truncation for efficiency
+- **Advanced Error Tracking**: Failed URL reporting with detailed analysis
+- **Configurable Demand Scoring**: Customize how demand is calculated
+- **Continue & Regenerate**: Resume analysis sessions and regenerate results
+- **Multiple Export Formats**: JSON and Markdown export options
+- **Security Transparency**: Clear privacy notices and minimal permissions
 
-### 🐹 Reddit Mode - Content Extraction
+### 🎯 Sources Mode - AI-Powered Search Generation (v2.0)
 
-1. **First, export your Google search results to CSV** (as described above)
-2. **Switch to Reddit mode** (orange theme with Reddit icons)
-3. **Select a CSV file** with Reddit URLs using the file picker
+1. **Switch to Sources mode** (purple theme with source icons)
+2. **Select platforms** you want to search (Reddit, Stack Overflow, GitHub, etc.)
+3. **Enter your topic** in the input field (e.g., "AI tools for developers")
+4. **Click "Generate AI-Powered Search Queries"**
+5. **Monitor progress** as the extension automatically:
+   - Generates optimized search queries for each platform
+   - Executes Google searches with multi-page extraction
+   - Categorizes results by platform
+6. **Switch to Extraction mode** when search is complete
+
+### 📊 Extraction Mode - Multi-Platform Content Extraction (v2.0)
+
+1. **Switch to Extraction mode** (orange theme with extraction icons)
+2. **Export search results** from Sources mode if needed
+3. **Select a CSV file** with URLs using the file picker
 4. **Configure extraction options**:
    - **Close tabs after extraction**: Saves system resources
    - **Extract comments**: Include comment data in extraction
-5. **Click "Start Reddit Extraction"**
-6. **Monitor progress** with the real-time progress bar
-7. **Stop anytime** - all extracted data will be saved automatically
+   - **Extract metadata**: Include additional platform metadata
+5. **Click "Start Data Extraction"**
+6. **Monitor progress** with real-time progress tracking
+7. **View failed URLs** if any extraction errors occur
+8. **Stop anytime** - all extracted data will be saved automatically
 
-### 🤖 AI Analysis Mode - OpenAI Integration
+### 🤖 AI Analysis Mode - Advanced OpenAI Integration (v2.0)
 
 1. **Set up your OpenAI API key** (see setup instructions below)
-2. **Extract Reddit data first** (using Reddit mode)
+2. **Extract data first** (using Extraction mode)
 3. **Switch to AI Analysis mode** (gold theme with AI icons)
-4. **Configure analysis options**:
+4. **Configure demand scoring weights** (optional):
+   - Adjust frequency, recency, engagement, emotion, and confidence weights
+   - Use sliders to customize how demand is calculated
+5. **Configure analysis options**:
    - **Include comments**: Analyze comment data for deeper insights
    - **Generate MVP recommendations**: Create actionable product ideas
-5. **Click "Start AI Analysis"**
-6. **Monitor progress** with real-time analysis tracking
-7. **View results** with top requested tools and MVP recommendations
-8. **Click "View Detailed Results"** to open the full-screen analysis tab
-9. **Export analysis** to JSON for further processing
+6. **Click "Start AI Analysis"** or **"Continue from Last Analysis"**
+7. **Monitor progress** with real-time analysis tracking
+8. **View results** with top requested tools and MVP recommendations
+9. **Use regeneration controls** to regenerate pitches and final plans
+10. **Click "View Detailed Results"** to open the full-screen analysis tab
+11. **Export analysis** in JSON or Markdown format
 
 ### 🔑 AI Analysis Setup
 
@@ -278,6 +312,40 @@ This extension:
 - Allows customization of analysis prompts for specific use cases
 
 **Important**: For production use, implement a backend proxy to keep your OpenAI API key secure.
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### Google Search Extraction Issues
+- **Problem**: Only getting results from first page
+- **Solution**: v2.0 now automatically extracts from up to 3 pages per query
+- **Problem**: No search results found
+- **Solution**: Check browser console for extraction errors, ensure Google search page is fully loaded
+
+#### Reddit Extraction Progress Issues
+- **Problem**: Progress shows 0% and doesn't update
+- **Solution**: v2.0 includes enhanced progress tracking with real-time updates
+- **Problem**: Extraction fails silently
+- **Solution**: Check browser console for detailed error messages, failed URLs are now tracked and reported
+
+#### Content Script Communication Issues
+- **Problem**: "Could not establish connection" errors
+- **Solution**: v2.0 includes fallback extraction mechanisms and better error handling
+- **Problem**: Tabs open but no data extracted
+- **Solution**: Ensure content scripts are properly injected, check manifest permissions
+
+#### AI Analysis Issues
+- **Problem**: OpenAI API errors
+- **Solution**: v2.0 includes exponential backoff retry logic and better error messages
+- **Problem**: Analysis results not showing
+- **Solution**: Check OpenAI API key in extension options, ensure sufficient API credits
+
+### Debug Mode
+Enable browser console logging to see detailed extraction progress and error messages:
+1. Open Chrome DevTools (F12)
+2. Go to Console tab
+3. Look for messages starting with "AI Demand Intelligence Miner"
 
 ## Future Enhancements
 
