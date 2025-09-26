@@ -19,7 +19,10 @@ document.addEventListener('DOMContentLoaded', function () {
         stackoverflow: document.getElementById('stackoverflowCheckbox'),
         github: document.getElementById('githubCheckbox'),
         devto: document.getElementById('devtoCheckbox'),
-        medium: document.getElementById('mediumCheckbox')
+        medium: document.getElementById('mediumCheckbox'),
+        producthunt: document.getElementById('producthuntCheckbox'),
+        quora: document.getElementById('quoraCheckbox'),
+        hackernews: document.getElementById('hackernewsCheckbox')
     };
     const topicInput = document.getElementById('topicInput');
     const generateDorks = document.getElementById('generateDorks');
@@ -57,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const analysisStatus = document.getElementById('analysisStatus');
     const startAIAnalysis = document.getElementById('startAIAnalysis');
     const viewResults = document.getElementById('viewResults');
+    const openReportUI = document.getElementById('openReportUI');
     const exportAnalysis = document.getElementById('exportAnalysis');
     const aiStatus = document.getElementById('aiStatus');
     const aiProgress = document.getElementById('aiProgress');
@@ -206,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function setupAIMode() {
         startAIAnalysis.addEventListener('click', startAIAnalysisProcess);
         viewResults.addEventListener('click', viewAnalysisResults);
+        openReportUI.addEventListener('click', openReportUIPage);
         exportAnalysis.addEventListener('click', exportAnalysisResults);
 
         // File selection setup
@@ -817,6 +822,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showAIStatus('AI analysis completed successfully!', 'success');
                 updateAIStatus({ isRunning: false }, response.perPost, response.aggregate);
                 viewResults.style.display = 'block';
+                openReportUI.style.display = 'block';
                 exportAnalysis.style.display = 'block';
             } else {
                 throw new Error(response.error || 'Analysis failed');
@@ -889,6 +895,20 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('Error opening analysis tab:', error);
             showAIStatus('Error opening analysis tab: ' + error.message, 'error');
+        }
+    }
+
+    // Open report UI page
+    function openReportUIPage() {
+        try {
+            // Open report UI in a new tab
+            chrome.tabs.create({
+                url: chrome.runtime.getURL('report_ui.html')
+            });
+            showAIStatus('Opening report selection interface...', 'success');
+        } catch (error) {
+            console.error('Error opening report UI:', error);
+            showAIStatus('Error opening report UI: ' + error.message, 'error');
         }
     }
 

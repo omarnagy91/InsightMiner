@@ -20,6 +20,9 @@
     "https://github.com/*",
     "https://dev.to/*",
     "https://medium.com/*",
+    "https://producthunt.com/*",
+    "https://quora.com/*",
+    "https://news.ycombinator.com/*",
     "https://platform.openai.com/*"
   ],
   "background": {

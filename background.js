@@ -5,16 +5,165 @@ let MODEL = "gpt-4o"; // Default model, can be changed in settings
 const PER_POST_SCHEMA = {
     type: "object",
     properties: {
-        requested_tools: { type: "array", items: { type: "string" } },
-        issues: { type: "array", items: { type: "string" } },
-        pros: { type: "array", items: { type: "string" } },
-        emotional_drivers: { type: "array", items: { type: "string" } },
-        sentiment_summary: { type: "string" },
-        confidence_score: { type: "number" },
-        supporting_quotes: { type: "array", items: { type: "string" } },
-        suggested_mvp_ideas: { type: "array", items: { type: "string" } }
+        post_url: { type: "string" },
+        topic: { type: "string" },
+        platform: { type: "string" },
+        items: {
+            type: "object",
+            properties: {
+                ideas: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            label: { type: "string" },
+                            what: { type: "string" },
+                            who: { type: "string" },
+                            why: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        source: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                        },
+                        required: ["id", "label", "what", "who", "why", "evidence", "confidence"]
+                    }
+                },
+                issues: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            problem: { type: "string" },
+                            context: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                        },
+                        required: ["id", "problem", "context", "evidence", "confidence"]
+                    }
+                },
+                missing_features: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            feature: { type: "string" },
+                            why_needed: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                        },
+                        required: ["id", "feature", "why_needed", "evidence", "confidence"]
+                    }
+                },
+                pros: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            praise: { type: "string" },
+                            tool_or_flow: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                        },
+                        required: ["id", "praise", "tool_or_flow", "evidence", "confidence"]
+                    }
+                },
+                cons: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            complaint: { type: "string" },
+                            tool_or_flow: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                        },
+                        required: ["id", "complaint", "tool_or_flow", "evidence", "confidence"]
+                    }
+                },
+                emotions: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                            driver: { type: "string" },
+                            why: { type: "string" },
+                            evidence: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        quote: { type: "string" },
+                                        url: { type: "string" }
+                                    },
+                                    required: ["quote", "url"]
+                                }
+                            },
+                            intensity: { type: "number", minimum: 1, maximum: 5 }
+                        },
+                        required: ["id", "driver", "why", "evidence", "intensity"]
+                    }
+                },
+                sentiment: { type: "string", enum: ["positive", "negative", "mixed"] }
+            },
+            required: ["ideas", "issues", "missing_features", "pros", "cons", "emotions", "sentiment"]
+        }
     },
-    required: ["requested_tools", "issues", "pros", "emotional_drivers", "sentiment_summary"],
+    required: ["post_url", "topic", "platform", "items"],
     additionalProperties: false
 };
 
@@ -159,45 +308,50 @@ async function getAnalysisPrompt() {
 }
 
 function getDefaultSearchPrompt() {
-    return `You are an expert at creating Google search queries to find relevant discussions about AI tools and productivity software.
+    return `You create precise Google queries that surface real user demand around any topic.
 
-For the topic "{topic}" on {platform}, create a Google search query that will find:
-- User discussions, questions, and feedback
-- Problems people are facing
-- Tools they're looking for
-- Feature requests and suggestions
+Context:
+- Topic: {topic}
+- Platform (domain or community): {platform}  // e.g., reddit.com, stackoverflow.com, producthunt.com, quora.com, github.com, news.ycombinator.com
 
-IMPORTANT: Use these proven search patterns for each platform:
+Goal:
+Return a SINGLE Google query string that finds high-signal, discussion-style pages on {platform} for the topic above. Prioritize:
+- Genuine user questions, problem statements, requests, feature ideas, comparisons, and frustration posts
+- Recent and substantive threads (avoid announcement/meta pages)
 
-For Reddit:
-- Use: (site:reddit.com OR site:old.reddit.com) inurl:comments (intitle:"best {topic}" OR intitle:"which {topic}" OR intext:"is there a {topic} that" OR intext:"any {topic} that" OR intext:"best {topic} for" OR intext:"recommend a {topic}" OR intext:"{topic} tool that can" OR intext:"{topic} to" ) -site:reddit.com/r/announcements -site:reddit.com/r/help
+Guidelines:
+1) Use platform-aware operators:
+   - reddit: (site:reddit.com OR site:old.reddit.com) inurl:comments
+   - stackoverflow: site:stackoverflow.com (intitle:"how do i" OR intitle:"error" OR intitle:"best way")
+   - producthunt: site:producthunt.com (inurl:posts OR inurl:discussions)
+   - quora: site:quora.com (intitle:"how do" OR intitle:"what is the best")
+   - github-issues: site:github.com inurl:/issues
+   - hacker news: site:news.ycombinator.com
+   If {platform} is a general label (e.g., "forums"), choose the best domain(s) likely indexed by Google.
 
-For Stack Overflow:
-- Use: site:stackoverflow.com ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which" OR "looking for")
+2) Add topic expansions intelligently:
+   - Include 2–4 synonyms or adjacent terms for {topic}.
+   - Include demand phrases: "looking for", "is there a", "recommend", "best ... for", "tool for", "feature request", "how do i", "any way to".
 
-For GitHub:
-- Use: site:github.com ("{topic}" OR "{topic} tool" OR "{topic} software") (issue OR discussion OR "feature request")
+3) Boost signal, reduce noise:
+   - Prefer intitle: for question-like titles where possible.
+   - Add minus filters to remove meta/announcements/help pages typical for the platform.
 
-For Dev.to:
-- Use: site:dev.to ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which")
+4) Output:
+   - Return ONLY the final Google query (one line). No commentary.
 
-For Medium:
-- Use: site:medium.com ("{topic}" OR "{topic} tool" OR "{topic} software") (recommend OR suggest OR "best" OR "which")
-
-Replace {topic} with the actual topic. Return only the search query, nothing else.`;
+Now produce the query.`;
 }
 
 function getDefaultAnalysisPrompt() {
-    return `You are a product researcher analyzing discussions about AI tools and productivity software. Extract:
-- Requested AI tools/tasks (what people want built)
-- Issues/problems they're facing
-- Pros/benefits they mention
-- Emotional drivers (frustration, excitement, etc.)
-- Overall sentiment
-- Supporting quotes (max 5, under 200 chars each)
-- MVP ideas based on the discussion
+    return `You are a meticulous product researcher. Extract ATOMIC items from the input thread (post + comments).
+- Do NOT summarize; enumerate every distinct idea, issue, missing feature, pro, con, and emotional driver.
+- Each item MUST include at least one supporting quote (≤200 chars) and the post URL.
+- If something isn't clearly present, omit it (don't infer).
+- Keep labels concise and specific; avoid duplicates (merge near-duplicates).
+- Sentiment should be overall for the whole thread.
 
-Be concise, non-speculative, and focus on actionable insights.`;
+Return JSON strictly matching the provided schema.`;
 }
 
 async function openaiJSON({ system, user, schema, model = null }) {
@@ -261,7 +415,7 @@ function sanitizeText(text) {
 }
 
 // ---- Per-post analysis ----
-function buildPerPostPrompt(postObj) {
+async function buildPerPostPrompt(postObj) {
     const title = sanitizeText(postObj?.post?.title ?? "");
     const post = sanitizeText(postObj?.post?.content ?? "");
     const comments = (postObj?.comments ?? [])
@@ -271,16 +425,7 @@ function buildPerPostPrompt(postObj) {
         .join(" | ");
 
     const combined = `Title: ${title} | Post: ${post} | Comments: ${comments}`;
-    const system = `You are a product researcher analyzing Reddit discussions about AI tools and productivity. Extract:
-- Requested AI tools/tasks (what people want built)
-- Issues/problems they're facing
-- Pros/benefits they mention
-- Emotional drivers (frustration, excitement, etc.)
-- Overall sentiment
-- Supporting quotes (max 5, under 200 chars each)
-- MVP ideas based on the discussion
-
-Be concise, non-speculative, and focus on actionable insights.`;
+    const system = await getAnalysisPrompt();
     return { system, user: combined };
 }
 
@@ -300,16 +445,22 @@ async function analyzePosts(posts) {
 
     for (let i = 0; i < posts.length; i++) {
         try {
-            const { system, user } = buildPerPostPrompt(posts[i]);
+            const { system, user } = await buildPerPostPrompt(posts[i]);
             // Truncate if too long to avoid token limits
             const truncatedUser = user.length > 65000 ?
                 user.slice(0, 32000) + "\n...[truncated]...\n" + user.slice(-32000) : user;
 
             const result = await openaiJSON({ system, user: truncatedUser, schema: PER_POST_SCHEMA });
+
+            // Add metadata to the result
+            result.post_url = posts[i]?.post?.url ?? posts[i]?.url ?? null;
+            result.topic = posts[i]?.topic ?? "unknown";
+            result.platform = posts[i]?.platform ?? "unknown";
             result._meta = {
-                post_url: posts[i]?.post?.url ?? posts[i]?.url ?? null,
-                analyzedAt: new Date().toISOString()
+                analyzedAt: new Date().toISOString(),
+                originalData: posts[i]
             };
+
             perPost.push(result);
 
             // Update progress
@@ -337,37 +488,123 @@ async function analyzePosts(posts) {
 
 // ---- Aggregation layer ----
 function localTally(perPost) {
-    const toLower = s => (s || "").trim().toLowerCase();
-    const counts = (arr) => arr.reduce((m, x) => (x ? (m[toLower(x)] = (m[toLower(x)] || 0) + 1, m) : m), {});
+    const allItems = {
+        ideas: [],
+        issues: [],
+        missing_features: [],
+        pros: [],
+        cons: [],
+        emotions: []
+    };
 
-    const tools = {};
-    const issues = {};
-    const pros = {};
-    const emos = {};
-
-    for (const r of perPost) {
-        Object.assign(tools, counts(r.requested_tools || []));
-        Object.assign(issues, counts(r.issues || []));
-        Object.assign(pros, counts(r.pros || []));
-        Object.assign(emos, counts(r.emotional_drivers || []));
+    // Collect all items from all posts
+    for (const post of perPost) {
+        if (post.items) {
+            for (const [category, items] of Object.entries(allItems)) {
+                if (post.items[category]) {
+                    allItems[category].push(...post.items[category]);
+                }
+            }
+        }
     }
 
-    // Top-N lists (keys only)
-    const topN = (obj, n = 20) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k);
+    // Calculate demand scores for each item
+    const calculateDemandScore = (item, allItemsOfType) => {
+        const freq_weight = 0.5;
+        const recency_weight = 0.2;
+        const engagement_weight = 0.15;
+        const emotion_weight = 0.1;
+        const confidence_weight = 0.05;
 
-    return {
-        top_tools: topN(tools, 20),
-        tool_counts: Object.fromEntries(Object.entries(tools).sort((a, b) => b[1] - a[1]).slice(0, 50)),
-        top_issues: topN(issues, 20),
-        top_pros: topN(pros, 20),
-        top_emos: topN(emos, 20)
+        // Count mentions (frequency)
+        const mentionCount = allItemsOfType.filter(other =>
+            other.label === item.label || other.problem === item.problem ||
+            other.feature === item.feature || other.praise === item.praise ||
+            other.complaint === item.complaint || other.driver === item.driver
+        ).length;
+
+        // Recency score (newer posts get higher scores)
+        const recencyScore = 1.0; // Simplified for now
+
+        // Engagement score (based on evidence count)
+        const engagementScore = Math.min(item.evidence.length / 3, 1.0);
+
+        // Emotion intensity
+        const emotionScore = item.intensity ? item.intensity / 5 : 0.5;
+
+        // Confidence score
+        const confidenceScore = item.confidence || 0.5;
+
+        return freq_weight * Math.log(1 + mentionCount) +
+            recency_weight * recencyScore +
+            engagement_weight * engagementScore +
+            emotion_weight * emotionScore +
+            confidence_weight * confidenceScore;
     };
+
+    // Calculate scores and sort
+    const scoredItems = {};
+    for (const [category, items] of Object.entries(allItems)) {
+        scoredItems[category] = items.map(item => ({
+            ...item,
+            demand_score: calculateDemandScore(item, items),
+            mention_count: items.filter(other =>
+                other.label === item.label || other.problem === item.problem ||
+                other.feature === item.feature || other.praise === item.praise ||
+                other.complaint === item.complaint || other.driver === item.driver
+            ).length
+        })).sort((a, b) => b.demand_score - a.demand_score);
+    }
+
+    return scoredItems;
 }
 
 async function aggregateWithGPT(perPost) {
     const summary = localTally(perPost);
-    const system = "You are a pragmatic product strategist. Analyze Reddit data to identify MVP opportunities. Be concise and actionable.";
-    const user = `Aggregate these Reddit-derived insights to create a strategic action plan:
+
+    // Create a simplified summary for the GPT prompt
+    const simplifiedSummary = {
+        top_ideas: summary.ideas.slice(0, 10).map(item => ({
+            label: item.label,
+            what: item.what,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        })),
+        top_issues: summary.issues.slice(0, 10).map(item => ({
+            problem: item.problem,
+            context: item.context,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        })),
+        top_missing_features: summary.missing_features.slice(0, 10).map(item => ({
+            feature: item.feature,
+            why_needed: item.why_needed,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        })),
+        top_pros: summary.pros.slice(0, 10).map(item => ({
+            praise: item.praise,
+            tool_or_flow: item.tool_or_flow,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        })),
+        top_cons: summary.cons.slice(0, 10).map(item => ({
+            complaint: item.complaint,
+            tool_or_flow: item.tool_or_flow,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        })),
+        top_emotions: summary.emotions.slice(0, 10).map(item => ({
+            driver: item.driver,
+            why: item.why,
+            intensity: item.intensity,
+            demand_score: item.demand_score,
+            mention_count: item.mention_count
+        }))
+    };
+
+    const system = "You are a pragmatic product strategist. Analyze multi-platform data to identify MVP opportunities. Be concise and actionable.";
+    const user = `Based on the extracted insights from multiple platforms, create a strategic action plan:
 
 1) Top 10 MVP ideas (1-line each; why they rank; feasible in 1 day)
 2) Top 6 problems to solve
@@ -376,12 +613,196 @@ async function aggregateWithGPT(perPost) {
 5) A 5-step 24h action plan
 
 Data summary:
-${JSON.stringify(summary, null, 2)}`;
+${JSON.stringify(simplifiedSummary, null, 2)}`;
 
     const agg = await openaiJSON({ system, user, schema: AGG_SCHEMA });
     agg._counters = summary;
     agg._meta = { generatedAt: new Date().toISOString() };
     return agg;
+}
+
+// ---- Pitch Generation ----
+async function generatePitches(selectedItems) {
+    const system = `You are a product strategist. Based ONLY on the SELECTED items below, generate 5 ultra-concise solution pitches.
+
+Constraints:
+- One sentence each, ≤ 22 words.
+- Format: "Build [WHAT] for [WHO] to [OUTCOME], because [WHY this matters]."
+- No buzzwords; concrete, user-facing benefits.
+- Each pitch must address at least one selected idea/issue/emotion.
+- Avoid overlap; make 5 distinct directions.`;
+
+    const user = `Selected Evidence (JSON):
+${JSON.stringify(selectedItems, null, 2)}`;
+
+    const pitchSchema = {
+        type: "object",
+        properties: {
+            pitches: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        pitch: { type: "string" },
+                        reasoning: { type: "string" }
+                    },
+                    required: ["pitch", "reasoning"]
+                },
+                minItems: 5,
+                maxItems: 5
+            }
+        },
+        required: ["pitches"]
+    };
+
+    const result = await openaiJSON({ system, user, schema: pitchSchema, temperature: 0.6 });
+    return result.pitches;
+}
+
+// ---- Final Builder ----
+async function generateFinalPlan(chosenPitch, selectedItems) {
+    const system = `You are a senior product engineer. Based ONLY on the chosen pitch and the SELECTED evidence below:
+1) Propose a fast, pragmatic tech stack that a single dev can ship in 1 day.
+2) Define a tight persona capturing the target user.
+3) Produce a crisp PRD focused on a 1-day MVP (cut scope aggressively).
+
+Constraints:
+- No vague language; everything must be shippable and testable in 24 hours.
+- Every feature in scope must have acceptance criteria.
+- Keep data model minimal but explicit.
+- Include 3–5 API endpoints max.
+- Favor serverless/hosted options to reduce ops.`;
+
+    const user = `Input:
+- Elevator pitch: "${chosenPitch}"
+- Selected items (JSON): ${JSON.stringify(selectedItems, null, 2)}
+
+Return JSON exactly matching the provided schema.`;
+
+    const finalSchema = {
+        type: "object",
+        properties: {
+            elevator_pitch: { type: "string" },
+            target_user_persona: {
+                type: "object",
+                properties: {
+                    name: { type: "string" },
+                    role: { type: "string" },
+                    context: { type: "string" },
+                    goals: { type: "array", items: { type: "string" } },
+                    pain_points: { type: "array", items: { type: "string" } },
+                    success_criteria: { type: "array", items: { type: "string" } }
+                },
+                required: ["name", "role", "context", "goals", "pain_points", "success_criteria"]
+            },
+            tech_stack: {
+                type: "object",
+                properties: {
+                    frontend: { type: "array", items: { type: "string" } },
+                    backend: { type: "array", items: { type: "string" } },
+                    data: { type: "array", items: { type: "string" } },
+                    auth: { type: "string" },
+                    ai: { type: "array", items: { type: "string" } },
+                    infra: { type: "array", items: { type: "string" } },
+                    why_this_stack: { type: "string" }
+                },
+                required: ["frontend", "backend", "data", "auth", "ai", "infra", "why_this_stack"]
+            },
+            prd: {
+                type: "object",
+                properties: {
+                    problem: { type: "string" },
+                    goals: { type: "array", items: { type: "string" } },
+                    primary_user_jtbd: { type: "array", items: { type: "string" } },
+                    scope_mvp: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                feature: { type: "string" },
+                                acceptance_criteria: { type: "array", items: { type: "string" } }
+                            },
+                            required: ["feature", "acceptance_criteria"]
+                        }
+                    },
+                    out_of_scope: { type: "array", items: { type: "string" } },
+                    user_flows: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                steps: { type: "array", items: { type: "string" } }
+                            },
+                            required: ["name", "steps"]
+                        }
+                    },
+                    data_model: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                entity: { type: "string" },
+                                fields: {
+                                    type: "array",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            name: { type: "string" },
+                                            type: { type: "string" },
+                                            notes: { type: "string" }
+                                        },
+                                        required: ["name", "type"]
+                                    }
+                                }
+                            },
+                            required: ["entity", "fields"]
+                        }
+                    },
+                    apis: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                method: { type: "string" },
+                                path: { type: "string" },
+                                request: { type: "string" },
+                                response: { type: "string" }
+                            },
+                            required: ["method", "path", "request", "response"]
+                        }
+                    },
+                    non_functional: {
+                        type: "object",
+                        properties: {
+                            perf: { type: "string" },
+                            privacy: { type: "string" },
+                            costs: { type: "string" }
+                        },
+                        required: ["perf", "privacy", "costs"]
+                    },
+                    success_metrics: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                metric: { type: "string" },
+                                target: { type: "string" }
+                            },
+                            required: ["metric", "target"]
+                        }
+                    },
+                    risks: { type: "array", items: { type: "string" } },
+                    "1_day_plan": { type: "array", items: { type: "string" } }
+                },
+                required: ["problem", "goals", "primary_user_jtbd", "scope_mvp", "out_of_scope", "user_flows", "data_model", "apis", "non_functional", "success_metrics", "risks", "1_day_plan"]
+            }
+        },
+        required: ["elevator_pitch", "target_user_persona", "tech_stack", "prd"]
+    };
+
+    const result = await openaiJSON({ system, user, schema: finalSchema, temperature: 0.3 });
+    return result;
 }
 
 // ---- Search Query Generation ----
@@ -393,29 +814,35 @@ async function generateSearchQueries(topic, sources) {
             const platformName = getPlatformDisplayName(source);
             let query = '';
 
-            // Use specific proven patterns for each platform
-            switch (source) {
-                case 'reddit':
-                    query = `(site:reddit.com OR site:old.reddit.com) inurl:comments (intitle:"best ${topic}" OR intitle:"which ${topic}" OR intext:"is there a ${topic} that" OR intext:"any ${topic} that" OR intitle:"best ${topic} for" OR intext:"recommend a ${topic}" OR intext:"${topic} tool that can" OR intext:"${topic} to" ) -site:reddit.com/r/announcements -site:reddit.com/r/help`;
-                    break;
-                case 'stackoverflow':
-                    query = `site:stackoverflow.com ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which" OR "looking for")`;
-                    break;
-                case 'github':
-                    query = `site:github.com ("${topic}" OR "${topic} tool" OR "${topic} software") (issue OR discussion OR "feature request")`;
-                    break;
-                case 'devto':
-                    query = `site:dev.to ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which")`;
-                    break;
-                case 'medium':
-                    query = `site:medium.com ("${topic}" OR "${topic} tool" OR "${topic} software") (recommend OR suggest OR "best" OR "which")`;
-                    break;
-                default:
-                    // Fallback to AI generation for unknown platforms
-                    const searchPrompt = await getSearchPrompt();
-                    const systemPrompt = searchPrompt.replace('{platform}', platformName);
-                    const userPrompt = `Topic: ${topic}`;
-                    query = await openaiText({ system: systemPrompt, user: userPrompt });
+            // Use AI generation for all platforms with the new generic prompt
+            const searchPrompt = await getSearchPrompt();
+            const systemPrompt = searchPrompt.replace('{platform}', platformName);
+            const userPrompt = `Topic: ${topic}`;
+
+            try {
+                query = await openaiText({ system: systemPrompt, user: userPrompt });
+            } catch (aiError) {
+                console.error(`AI query generation failed for ${source}, using fallback:`, aiError);
+                // Fallback to basic patterns if AI fails
+                switch (source) {
+                    case 'reddit':
+                        query = `(site:reddit.com OR site:old.reddit.com) inurl:comments "${topic}" (recommend OR suggest OR "best" OR "looking for")`;
+                        break;
+                    case 'stackoverflow':
+                        query = `site:stackoverflow.com "${topic}" (recommend OR suggest OR "best" OR "which" OR "looking for")`;
+                        break;
+                    case 'github':
+                        query = `site:github.com "${topic}" (issue OR discussion OR "feature request")`;
+                        break;
+                    case 'devto':
+                        query = `site:dev.to "${topic}" (recommend OR suggest OR "best" OR "which")`;
+                        break;
+                    case 'medium':
+                        query = `site:medium.com "${topic}" (recommend OR suggest OR "best" OR "which")`;
+                        break;
+                    default:
+                        query = `site:${source}.com "${topic}" (discussion OR question OR recommendation)`;
+                }
             }
 
             queries.push({
@@ -601,7 +1028,11 @@ function getPlatformDisplayName(source) {
         'stackoverflow': 'Stack Overflow',
         'github': 'GitHub',
         'devto': 'Dev.to',
-        'medium': 'Medium'
+        'medium': 'Medium',
+        'producthunt': 'Product Hunt',
+        'quora': 'Quora',
+        'hackernews': 'Hacker News',
+        'hn': 'Hacker News'
     };
     return names[source] || source;
 }
@@ -657,6 +1088,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 // Handle stop and save request
                 handleStopAndSave(sendResponse);
                 return true; // Keep message channel open for async response
+
+            } else if (request.type === 'GENERATE_PITCHES') {
+                // Generate pitches from selected items
+                const pitches = await generatePitches(request.selectedItems);
+                sendResponse({ success: true, pitches });
+
+            } else if (request.type === 'GENERATE_FINAL_PLAN') {
+                // Generate final plan from chosen pitch
+                const finalPlan = await generateFinalPlan(request.chosenPitch, request.selectedItems);
+                sendResponse({ success: true, finalPlan });
 
             } else {
                 sendResponse({ ok: false, error: "Unknown message type" });
