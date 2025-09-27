@@ -11,10 +11,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const sourcesMode = document.getElementById('sourcesMode');
     const extractionMode = document.getElementById('extractionMode');
     const aiMode = document.getElementById('aiMode');
+    const automationMode = document.getElementById('automationMode');
+
+    // Automation elements
+    const startFullAutomationBtn = document.getElementById('startFullAutomation');
+    const automationProgress = document.getElementById('automationProgress');
+    const automationResults = document.getElementById('automationResults');
 
     // Add keyboard navigation support
     let currentModeIndex = 0;
-    const modes = ['sources', 'extraction', 'ai'];
+    const modes = ['sources', 'extraction', 'ai', 'automation'];
 
     // Sources mode elements
     const selectedSourcesCount = document.getElementById('selectedSourcesCount');
@@ -181,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
             sourcesMode.classList.toggle('active', mode === 'sources');
             extractionMode.classList.toggle('active', mode === 'extraction');
             aiMode.classList.toggle('active', mode === 'ai');
+            automationMode.classList.toggle('active', mode === 'automation');
 
             // Update body theme with smooth transition
             document.body.style.transition = 'background 0.3s ease';
@@ -190,6 +197,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.className = 'extraction-theme';
             } else if (mode === 'ai') {
                 document.body.className = 'ai-theme';
+            } else if (mode === 'automation') {
+                document.body.className = 'automation-theme';
             }
 
             // Animate in the new content
@@ -2001,5 +2010,216 @@ document.addEventListener('DOMContentLoaded', function () {
     function logPerformance(operation, startTime) {
         const duration = performance.now() - startTime;
         console.log(`${operation} completed in ${duration.toFixed(2)}ms`);
+    }
+
+    // Full Automation Mode
+    let automationState = {
+        isRunning: false,
+        startTime: null,
+        currentStep: 0,
+        results: {
+            searchResults: 0,
+            extractedItems: 0,
+            analysisItems: 0
+        }
+    };
+
+    // Automation step management
+    function updateAutomationStep(step, status, details = '') {
+        const stepElement = document.getElementById(`step${step}`);
+        const statusElement = stepElement.querySelector('.step-status');
+
+        // Update step classes
+        document.querySelectorAll('.step').forEach((el, index) => {
+            el.classList.remove('active', 'completed');
+            if (index + 1 < step) {
+                el.classList.add('completed');
+            } else if (index + 1 === step) {
+                el.classList.add('active');
+            }
+        });
+
+        // Update status text
+        statusElement.textContent = status;
+        if (details) {
+            statusElement.textContent += ` - ${details}`;
+        }
+
+        // Update automation stage
+        const stageElement = document.getElementById('automationStage');
+        const stepNames = ['Search Generation', 'Data Extraction', 'AI Analysis', 'Report Generation', 'Download Reports'];
+        stageElement.textContent = stepNames[step - 1] || 'Completed';
+    }
+
+    // Update automation timer
+    function updateAutomationTimer() {
+        if (!automationState.isRunning || !automationState.startTime) return;
+
+        const elapsed = Date.now() - automationState.startTime;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        document.getElementById('automationTime').textContent = timeString;
+        document.getElementById('autoTotalTime').textContent = timeString;
+    }
+
+    // Start full automation
+    async function startFullAutomation() {
+        const topic = document.getElementById('autoTopic').value.trim();
+        const selectedPlatforms = Array.from(document.querySelectorAll('#autoPlatforms input[type="checkbox"]:checked'))
+            .map(cb => cb.value);
+        const analysisDepth = document.getElementById('autoAnalysisDepth').value;
+
+        if (!topic) {
+            alert('Please enter a research topic');
+            return;
+        }
+
+        if (selectedPlatforms.length === 0) {
+            alert('Please select at least one platform');
+            return;
+        }
+
+        // Initialize automation state
+        automationState = {
+            isRunning: true,
+            startTime: Date.now(),
+            currentStep: 1,
+            results: { searchResults: 0, extractedItems: 0, analysisItems: 0 }
+        };
+
+        // Show progress UI
+        automationProgress.style.display = 'block';
+        automationResults.style.display = 'none';
+        startFullAutomationBtn.disabled = true;
+        startFullAutomationBtn.querySelector('.btn-text').style.display = 'none';
+        startFullAutomationBtn.querySelector('.btn-loading').style.display = 'block';
+
+        // Start timer
+        const timerInterval = setInterval(updateAutomationTimer, 1000);
+
+        try {
+            // Step 1: Search Generation
+            updateAutomationStep(1, 'Running', 'Generating search queries...');
+            const searchResponse = await chrome.runtime.sendMessage({
+                action: 'generateSearchQueries',
+                topic: topic,
+                sources: selectedPlatforms
+            });
+
+            if (searchResponse.success) {
+                automationState.results.searchResults = searchResponse.results.length;
+                updateAutomationStep(1, 'Completed', `${searchResponse.results.length} results found`);
+                document.getElementById('autoSearchCount').textContent = searchResponse.results.length;
+            } else {
+                throw new Error('Search generation failed');
+            }
+
+            // Step 2: Data Extraction
+            updateAutomationStep(2, 'Running', 'Extracting content from URLs...');
+            const extractionResponse = await chrome.runtime.sendMessage({
+                action: 'startDataExtraction',
+                urls: searchResponse.results.map(r => r.url)
+            });
+
+            if (extractionResponse.success) {
+                // Wait for extraction to complete
+                await waitForExtractionCompletion();
+                automationState.results.extractedItems = extractionResponse.extractedCount || 0;
+                updateAutomationStep(2, 'Completed', `${automationState.results.extractedItems} items extracted`);
+                document.getElementById('autoExtractCount').textContent = automationState.results.extractedItems;
+            } else {
+                throw new Error('Data extraction failed');
+            }
+
+            // Step 3: AI Analysis
+            updateAutomationStep(3, 'Running', 'Running AI analysis...');
+            const analysisResponse = await chrome.runtime.sendMessage({
+                action: 'startAIAnalysis',
+                dataSource: 'extracted',
+                analysisDepth: analysisDepth
+            });
+
+            if (analysisResponse.success) {
+                // Wait for analysis to complete
+                await waitForAnalysisCompletion();
+                automationState.results.analysisItems = analysisResponse.analysisCount || 0;
+                updateAutomationStep(3, 'Completed', `${automationState.results.analysisItems} insights generated`);
+                document.getElementById('autoAnalysisCount').textContent = automationState.results.analysisItems;
+            } else {
+                throw new Error('AI analysis failed');
+            }
+
+            // Step 4: Report Generation
+            updateAutomationStep(4, 'Running', 'Generating reports...');
+            const reportResponse = await chrome.runtime.sendMessage({
+                action: 'generateReport'
+            });
+
+            if (reportResponse.success) {
+                updateAutomationStep(4, 'Completed', 'Reports generated');
+            } else {
+                throw new Error('Report generation failed');
+            }
+
+            // Step 5: Download Reports
+            updateAutomationStep(5, 'Running', 'Downloading reports...');
+            const downloadResponse = await chrome.runtime.sendMessage({
+                action: 'downloadReports'
+            });
+
+            if (downloadResponse.success) {
+                updateAutomationStep(5, 'Completed', 'Reports downloaded');
+            } else {
+                throw new Error('Download failed');
+            }
+
+            // Show results
+            automationResults.style.display = 'block';
+            updateAutomationStep(6, 'Completed', 'Full automation completed!');
+
+        } catch (error) {
+            console.error('Automation failed:', error);
+            alert(`Automation failed: ${error.message}`);
+        } finally {
+            // Cleanup
+            clearInterval(timerInterval);
+            automationState.isRunning = false;
+            startFullAutomationBtn.disabled = false;
+            startFullAutomationBtn.querySelector('.btn-text').style.display = 'block';
+            startFullAutomationBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+    }
+
+    // Wait for extraction to complete
+    async function waitForExtractionCompletion() {
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(async () => {
+                const { extractionState } = await chrome.storage.local.get(['extractionState']);
+                if (extractionState && extractionState.completed) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 2000);
+        });
+    }
+
+    // Wait for analysis to complete
+    async function waitForAnalysisCompletion() {
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(async () => {
+                const { analysisState } = await chrome.storage.local.get(['analysisState']);
+                if (analysisState && !analysisState.isRunning) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 2000);
+        });
+    }
+
+    // Event listeners for automation
+    if (startFullAutomationBtn) {
+        startFullAutomationBtn.addEventListener('click', startFullAutomation);
     }
 });
