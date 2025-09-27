@@ -1805,4 +1805,3 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log(`${operation} completed in ${duration.toFixed(2)}ms`);
     }
 });
-});

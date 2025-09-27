@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modelEl = document.getElementById('model');
     const searchPromptEl = document.getElementById('searchPrompt');
     const analysisPromptEl = document.getElementById('analysisPrompt');
+    const perPostPromptEl = document.getElementById('perPostPrompt');
+    const pitchPromptEl = document.getElementById('pitchPrompt');
+    const planPromptEl = document.getElementById('planPrompt');
     const saveBtn = document.getElementById('save');
     const resetBtn = document.getElementById('reset');
     const statusEl = document.getElementById('status');
@@ -36,7 +39,49 @@ Return only the search query, nothing else.`,
 - Supporting quotes (max 5, under 200 chars each)
 - MVP ideas based on the discussion
 
-Be concise, non-speculative, and focus on actionable insights.`
+Be concise, non-speculative, and focus on actionable insights.`,
+        perPostPrompt: `You are a product researcher analyzing user discussions. Extract specific insights from the thread below.
+
+For each category, find concrete examples mentioned by users:
+- ideas: What tools, features, or solutions do users want?
+- issues: What problems or frustrations do users mention?
+- missing_features: What functionality is users asking for?
+- pros: What do users like or praise?
+- cons: What complaints or criticisms do users have?
+- emotions: What emotional reactions do users express?
+
+For each item you find, provide:
+- text: A clear description of the insight
+- quote: The exact quote from the discussion that supports it
+
+Be specific and extract real user statements. If no examples exist for a category, return an empty array.`,
+        pitchPrompt: `You are a product strategist. Based ONLY on the SELECTED items below, generate 5 ultra-concise solution pitches.
+
+Each pitch must be:
+- Maximum 22 words
+- Focus on ONE core value proposition
+- Address a specific user need
+- Be actionable and clear
+
+Format: "Build [solution] for [target] who [problem] by [approach] to [outcome]"
+
+Selected items: {items}
+
+Generate 5 distinct pitches:`,
+        planPrompt: `You are a senior product engineer. Create a detailed 1-day MVP plan based on the selected pitch and evidence.
+
+Pitch: {pitch}
+Evidence: {evidence}
+
+Provide:
+1. Target persona (demographics, pain points, goals)
+2. Tech stack (frontend, backend, database, deployment)
+3. Core features (MVP scope)
+4. Development timeline (1-day breakdown)
+5. Success metrics
+6. Next steps
+
+Be specific and actionable for immediate implementation.`
     };
 
     // Load existing settings
@@ -44,7 +89,10 @@ Be concise, non-speculative, and focus on actionable insights.`
         'OPENAI_API_KEY',
         'AI_MODEL',
         'SEARCH_PROMPT',
-        'ANALYSIS_PROMPT'
+        'ANALYSIS_PROMPT',
+        'PER_POST_PROMPT',
+        'PITCH_PROMPT',
+        'PLAN_PROMPT'
     ], async (result) => {
         if (result.OPENAI_API_KEY) {
             keyEl.value = result.OPENAI_API_KEY;
@@ -63,6 +111,21 @@ Be concise, non-speculative, and focus on actionable insights.`
             analysisPromptEl.value = result.ANALYSIS_PROMPT;
         } else {
             analysisPromptEl.value = defaultPrompts.analysisPrompt;
+        }
+        if (result.PER_POST_PROMPT) {
+            perPostPromptEl.value = result.PER_POST_PROMPT;
+        } else {
+            perPostPromptEl.value = defaultPrompts.perPostPrompt;
+        }
+        if (result.PITCH_PROMPT) {
+            pitchPromptEl.value = result.PITCH_PROMPT;
+        } else {
+            pitchPromptEl.value = defaultPrompts.pitchPrompt;
+        }
+        if (result.PLAN_PROMPT) {
+            planPromptEl.value = result.PLAN_PROMPT;
+        } else {
+            planPromptEl.value = defaultPrompts.planPrompt;
         }
     });
 
@@ -114,7 +177,10 @@ Be concise, non-speculative, and focus on actionable insights.`
                 OPENAI_API_KEY: apiKey,
                 AI_MODEL: model,
                 SEARCH_PROMPT: searchPrompt,
-                ANALYSIS_PROMPT: analysisPrompt
+                ANALYSIS_PROMPT: analysisPrompt,
+                PER_POST_PROMPT: perPostPromptEl.value.trim(),
+                PITCH_PROMPT: pitchPromptEl.value.trim(),
+                PLAN_PROMPT: planPromptEl.value.trim()
             };
 
             // Test API key if provided
@@ -265,12 +331,20 @@ Be concise, non-speculative, and focus on actionable insights.`
 
             // Filter for chat completion models
             const chatModels = models.filter(model =>
+                model.id.includes('gpt-5') ||
                 model.id.includes('gpt-4') ||
                 model.id.includes('gpt-3.5') ||
                 model.id.includes('o1')
             ).sort((a, b) => {
-                // Sort by preference: gpt-4o first, then gpt-4o-mini, then others
-                const order = { 'gpt-4o': 1, 'gpt-4o-mini': 2, 'gpt-4-turbo': 3, 'gpt-3.5-turbo': 4 };
+                // Sort by preference: gpt-5 first, then gpt-4o, then others
+                const order = {
+                    'gpt-5': 1,
+                    'gpt-5-turbo': 2,
+                    'gpt-4o': 3,
+                    'gpt-4o-mini': 4,
+                    'gpt-4-turbo': 5,
+                    'gpt-3.5-turbo': 6
+                };
                 return (order[a.id] || 99) - (order[b.id] || 99);
             });
 
@@ -288,7 +362,9 @@ Be concise, non-speculative, and focus on actionable insights.`
 
                 // Add friendly names and descriptions
                 let displayName = model.id;
-                if (model.id === 'gpt-4o') displayName = 'GPT-4o (Most Capable)';
+                if (model.id === 'gpt-5') displayName = 'GPT-5 (Latest & Most Capable)';
+                else if (model.id === 'gpt-5-turbo') displayName = 'GPT-5 Turbo (Fast & Powerful)';
+                else if (model.id === 'gpt-4o') displayName = 'GPT-4o (Most Capable)';
                 else if (model.id === 'gpt-4o-mini') displayName = 'GPT-4o Mini (Fast & Cheap)';
                 else if (model.id === 'gpt-4-turbo') displayName = 'GPT-4 Turbo';
                 else if (model.id === 'gpt-3.5-turbo') displayName = 'GPT-3.5 Turbo';
@@ -297,8 +373,10 @@ Be concise, non-speculative, and focus on actionable insights.`
                 modelEl.appendChild(option);
             });
 
-            // Set default to gpt-4o-mini if available, otherwise first model
-            const defaultModel = chatModels.find(m => m.id === 'gpt-4o-mini') || chatModels[0];
+            // Set default to gpt-5 if available, then gpt-4o-mini, otherwise first model
+            const defaultModel = chatModels.find(m => m.id === 'gpt-5') ||
+                chatModels.find(m => m.id === 'gpt-4o-mini') ||
+                chatModels[0];
             if (defaultModel) {
                 modelEl.value = defaultModel.id;
             }
@@ -350,6 +428,9 @@ Be concise, non-speculative, and focus on actionable insights.`
             modelEl.value = 'gpt-4o';
             searchPromptEl.value = defaultPrompts.searchPrompt;
             analysisPromptEl.value = defaultPrompts.analysisPrompt;
+            perPostPromptEl.value = defaultPrompts.perPostPrompt;
+            pitchPromptEl.value = defaultPrompts.pitchPrompt;
+            planPromptEl.value = defaultPrompts.planPrompt;
 
             // Clear validation states
             clearValidationStates();

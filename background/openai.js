@@ -70,16 +70,13 @@ async function callOpenAI({
                 role: "user",
                 content: user
             }
-        ]
+        ],
+        stream: false // Set to true for streaming, but we'll handle this separately
     };
 
     if (schema) {
         body.response_format = {
-            type: "json_schema",
-            json_schema: {
-                name: "structured_output",
-                schema
-            }
+            type: "json_object"
         };
     }
 
@@ -240,8 +237,118 @@ function validateAgainstSchema(schema, data, path = "root") {
     return { valid: true };
 }
 
+// Streaming OpenAI call for real-time analysis
+async function callOpenAIStream({
+    system,
+    user,
+    model,
+    temperature = 0,
+    maxRetries = MAX_RETRIES,
+    onChunk = () => { },
+    onComplete = () => { },
+    onError = () => { },
+    metadata = {}
+}) {
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+        throw new Error("OPENAI_API_KEY not set");
+    }
+
+    const resolvedModel = await getModel(model);
+
+    const body = {
+        model: resolvedModel,
+        temperature,
+        messages: [
+            {
+                role: "system",
+                content: system
+            },
+            {
+                role: "user",
+                content: user
+            }
+        ],
+        stream: true
+    };
+
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt <= maxRetries) {
+        try {
+            const response = await fetch(OPENAI_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`OpenAI API error ${response.status}: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') {
+                            onComplete(fullResponse);
+                            return fullResponse;
+                        }
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content = parsed.choices?.[0]?.delta?.content;
+                            if (content) {
+                                fullResponse += content;
+                                onChunk(content, fullResponse);
+                            }
+                        } catch (e) {
+                            // Ignore parsing errors for incomplete chunks
+                        }
+                    }
+                }
+            }
+
+            onComplete(fullResponse);
+            return fullResponse;
+
+        } catch (error) {
+            lastError = error;
+            attempt++;
+
+            if (attempt <= maxRetries) {
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                console.log(`OpenAI streaming attempt ${attempt} failed, retrying in ${delay}ms:`, error.message);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    const error = new Error(`OpenAI streaming failed after ${maxRetries} retries: ${lastError?.message}`);
+    onError(error);
+    throw error;
+}
+
 export {
     callOpenAI,
+    callOpenAIStream,
     validateAgainstSchema
 };
 

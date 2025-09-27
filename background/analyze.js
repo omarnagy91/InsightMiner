@@ -1,5 +1,5 @@
 import { callOpenAI } from './openai.js';
-import { CONCURRENCY_LIMIT, STORAGE_KEYS, DEMAND_SCORING_DEFAULTS, DEMAND_SCORE_SETTINGS } from './constants.js';
+import { CONCURRENCY_LIMIT, BATCH_SIZE, BATCH_DELAY, STORAGE_KEYS, DEMAND_SCORING_DEFAULTS, DEMAND_SCORE_SETTINGS } from './constants.js';
 import { saveAnalysisRun } from './storage.js';
 import { mergeItems } from './dedupe.js';
 
@@ -18,13 +18,25 @@ async function analyzePost({ post, schema, buildPrompt }) {
         platform: post.platform || 'unknown'
     };
 
-    return callOpenAI({
+    console.log('=== AI Analysis Debug ===');
+    console.log('Post URL:', metadata.post_url);
+    console.log('Platform:', metadata.platform);
+    console.log('System Prompt:', system);
+    console.log('User Input (first 500 chars):', user.substring(0, 500));
+    console.log('Schema:', JSON.stringify(schema, null, 2));
+
+    const result = await callOpenAI({
         system,
         user,
         schema,
         temperature: 0,
         metadata
     });
+
+    console.log('AI Response:', JSON.stringify(result, null, 2));
+    console.log('=== End Debug ===');
+
+    return result;
 }
 
 async function processWithConcurrency(items, handler, limit = CONCURRENCY_LIMIT, onProgress = () => {
@@ -104,15 +116,61 @@ function attachDemandScores(groups, weights) {
     return scored;
 }
 
+// Batch processing for large datasets
+async function processBatches(items, handler, batchSize = BATCH_SIZE, delay = BATCH_DELAY, onProgress = () => { }) {
+    const batches = chunk(items, batchSize);
+    const results = [];
+
+    for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`Processing batch ${i + 1}/${batches.length} (${batch.length} items)`);
+
+        const batchResults = await Promise.all(
+            batch.map(item => handler(item))
+        );
+
+        results.push(...batchResults);
+
+        // Update progress
+        onProgress({
+            current: (i + 1) * batchSize,
+            total: items.length,
+            batch: i + 1,
+            totalBatches: batches.length
+        });
+
+        // Delay between batches to prevent rate limiting
+        if (i < batches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    return results;
+}
+
 async function analyzePosts({
     posts,
     schema,
     buildPrompt,
     onProgress = () => {
     },
-    weights = DEMAND_SCORING_DEFAULTS
+    weights = DEMAND_SCORING_DEFAULTS,
+    useBatching = true
 }) {
-    const enriched = await processWithConcurrency(posts, (post) => analyzePost({ post, schema, buildPrompt }), CONCURRENCY_LIMIT, onProgress);
+    let enriched;
+
+    if (useBatching && posts.length > BATCH_SIZE) {
+        console.log(`Using batch processing for ${posts.length} posts`);
+        enriched = await processBatches(
+            posts,
+            (post) => analyzePost({ post, schema, buildPrompt }),
+            BATCH_SIZE,
+            BATCH_DELAY,
+            onProgress
+        );
+    } else {
+        enriched = await processWithConcurrency(posts, (post) => analyzePost({ post, schema, buildPrompt }), CONCURRENCY_LIMIT, onProgress);
+    }
 
     const merged = mergeItems(enriched, DEMAND_SCORE_SETTINGS.maxEvidenceStored);
     const scored = attachDemandScores(merged, weights);
@@ -120,10 +178,13 @@ async function analyzePosts({
     const run = {
         id: `analysis_${Date.now()}`,
         startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
         postsAnalyzed: posts.length,
+        itemsFound: Object.values(scored).reduce((sum, arr) => sum + arr.length, 0),
         perPost: enriched,
         merged: scored,
-        weights
+        weights,
+        useBatching
     };
 
     await chrome.storage.local.set({

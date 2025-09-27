@@ -53,6 +53,8 @@ export const DEMAND_SCORE_SETTINGS = {
     maxEvidenceStored: 3
 };
 
-export const CONCURRENCY_LIMIT = 2;
+export const CONCURRENCY_LIMIT = 3; // Increased for better performance
+export const BATCH_SIZE = 10; // Process posts in batches
+export const BATCH_DELAY = 1000; // Delay between batches (ms)
 export const RETRYABLE_STATUS = [429, 500, 502, 503, 504];
 

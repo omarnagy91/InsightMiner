@@ -385,6 +385,24 @@
             <textarea id="analysisPrompt" rows="4" placeholder="Enter custom prompt for AI analysis..."></textarea>
             <small class="form-help">This prompt will be used to analyze extracted data and identify demand patterns.</small>
         </div>
+
+        <div class="form-group">
+            <label for="perPostPrompt">📝 Per-Post Analysis Prompt:</label>
+            <textarea id="perPostPrompt" rows="6" placeholder="Enter your custom per-post analysis prompt..."></textarea>
+            <small class="form-help">Customize how the AI analyzes individual posts. Use {title}, {content}, {comments}, {url} placeholders.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="pitchPrompt">💡 Pitch Generation Prompt:</label>
+            <textarea id="pitchPrompt" rows="4" placeholder="Enter your custom pitch generation prompt..."></textarea>
+            <small class="form-help">Customize how the AI generates solution pitches from insights.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="planPrompt">📋 MVP Plan Prompt:</label>
+            <textarea id="planPrompt" rows="4" placeholder="Enter your custom MVP plan prompt..."></textarea>
+            <small class="form-help">Customize how the AI generates MVP plans from selected pitches.</small>
+        </div>
         
         <div class="button-group">
             <button id="save" class="btn">💾 Save Settings</button>

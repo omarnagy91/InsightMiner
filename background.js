@@ -220,13 +220,24 @@ function sanitizeText(text) {
 
 // ---- Per-post prompt builder ----
 function buildPerPostPrompt(postObj) {
+    console.log('=== buildPerPostPrompt Debug ===');
+    console.log('Post object structure:', JSON.stringify(postObj, null, 2));
+
     const title = sanitizeText(postObj?.post?.title ?? "");
     const post = truncateContent(sanitizeText(postObj?.post?.content ?? ""));
     const comments = limitComments(postObj?.comments ?? [])
         .map(c => `${c.author || "anon"}: ${sanitizeText(c.content || "")}`)
         .join(" | ");
 
+    console.log('Title:', title);
+    console.log('Post content length:', post.length);
+    console.log('Comments count:', postObj?.comments?.length || 0);
+    console.log('Comments preview:', comments.substring(0, 200));
+
     const user = `Topic: ${postObj.topic || "unknown"}\nPlatform: ${postObj.platform || "unknown"}\nURL: ${postObj.post?.url || postObj.url || "unknown"}\n\nThread:\nTitle: ${title}\n${post}\n\nComments:${comments ? ` ${comments}` : ' none'}`;
+
+    console.log('Final user prompt length:', user.length);
+    console.log('=== End buildPerPostPrompt Debug ===');
 
     return {
         system: `You are a product researcher analyzing user discussions. Extract specific insights from the thread below.
@@ -243,7 +254,25 @@ For each item you find, provide:
 - text: A clear description of the insight
 - quote: The exact quote from the discussion that supports it
 
-Be specific and extract real user statements. If no examples exist for a category, return an empty array.`,
+Be specific and extract real user statements. If no examples exist for a category, return an empty array.
+
+IMPORTANT: You must return a valid JSON object with this exact structure:
+{
+  "post_url": "string",
+  "topic": "string", 
+  "platform": "string",
+  "items": {
+    "ideas": [{"text": "string", "quote": "string"}],
+    "issues": [{"text": "string", "quote": "string"}],
+    "missing_features": [{"text": "string", "quote": "string"}],
+    "pros": [{"text": "string", "quote": "string"}],
+    "cons": [{"text": "string", "quote": "string"}],
+    "emotions": [{"text": "string", "quote": "string"}],
+    "sentiment": "positive|negative|neutral|mixed"
+  }
+}
+
+Do not return empty arrays unless there truly are no examples.`,
         user
     };
 }
