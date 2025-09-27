@@ -1,6 +1,14 @@
-# AI Demand Intelligence Miner Chrome Extension v2.0
+# InsightMiner Chrome Extension v2.0
 
-A powerful Chrome extension that extracts insights from multiple platforms (Reddit, Stack Overflow, GitHub, Dev.to, Medium, Product Hunt, Quora, Hacker News), analyzes them with AI, and identifies market demands and opportunities. Features a modern three-mode interface with AI-powered search query generation, advanced data extraction, and comprehensive AI analysis capabilities.
+**InsightMiner** is an open-source Chrome extension that mines real market demand directly from user discussions across Reddit, Stack Overflow, GitHub, Quora, Product Hunt, Hacker News, Dev.to, and Medium.
+
+It automatically:
+- Generates precise search queries (Google dorks) per platform to surface high-signal user discussions
+- Extracts posts, comments, and metadata with efficient tab management, error tracking, and versioned storage
+- Runs multi-layer AI analysis (using OpenAI Chat Completions API) with structured outputs to identify ideas, problems, missing features, pros, cons, and emotional drivers
+- Provides an interactive report interface where you can select relevant insights, auto-generate short elevator pitches, and trigger final plans with user personas, tech stacks, and lean PRDs for 1-day MVP builds
+
+**InsightMiner turns raw community chatter into actionable product blueprints**—helping makers, founders, and researchers validate opportunities in hours, not weeks.
 
 ## ✨ Features
 

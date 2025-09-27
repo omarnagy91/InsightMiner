@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AI Demand Intelligence Miner",
+  "name": "InsightMiner",
   "version": "2.0.0",
-  "description": "Extract insights from multiple platforms (Reddit, Stack Overflow, GitHub) and analyze with AI to identify market demands and opportunities.",
+  "description": "Mines real market demand directly from user discussions across Reddit, Stack Overflow, GitHub, Quora, Product Hunt, Hacker News, Dev.to, and Medium. Turns raw community chatter into actionable product blueprints.",
   "permissions": [
     "activeTab",
     "storage",
@@ -66,7 +66,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Open AI Demand Intelligence Miner",
+    "default_title": "Open InsightMiner",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"

@@ -33,26 +33,10 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            label: { type: "string" },
-                            what: { type: "string" },
-                            who: { type: "string" },
-                            why: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        source: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "label", "what", "who", "why", "evidence", "confidence"]
+                        required: ["text", "quote"]
                     }
                 },
                 issues: {
@@ -60,23 +44,10 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            problem: { type: "string" },
-                            context: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "problem", "context", "evidence", "confidence"]
+                        required: ["text", "quote"]
                     }
                 },
                 missing_features: {
@@ -84,23 +55,10 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            feature: { type: "string" },
-                            why_needed: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "feature", "why_needed", "evidence", "confidence"]
+                        required: ["text", "quote"]
                     }
                 },
                 pros: {
@@ -108,23 +66,10 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            praise: { type: "string" },
-                            tool_or_flow: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "praise", "tool_or_flow", "evidence", "confidence"]
+                        required: ["text", "quote"]
                     }
                 },
                 cons: {
@@ -132,23 +77,10 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            complaint: { type: "string" },
-                            tool_or_flow: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            confidence: { type: "number", minimum: 0, maximum: 1 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "complaint", "tool_or_flow", "evidence", "confidence"]
+                        required: ["text", "quote"]
                     }
                 },
                 emotions: {
@@ -156,32 +88,18 @@ const PER_POST_SCHEMA = {
                     items: {
                         type: "object",
                         properties: {
-                            id: { type: "string" },
-                            driver: { type: "string" },
-                            why: { type: "string" },
-                            evidence: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        quote: { type: "string" },
-                                        url: { type: "string" }
-                                    },
-                                    required: ["quote", "url"]
-                                }
-                            },
-                            intensity: { type: "number", minimum: 1, maximum: 5 }
+                            text: { type: "string" },
+                            quote: { type: "string" }
                         },
-                        required: ["id", "driver", "why", "evidence", "intensity"]
+                        required: ["text", "quote"]
                     }
                 },
-                sentiment: { type: "string", enum: ["positive", "negative", "mixed"] }
+                sentiment: { type: "string", enum: ["positive", "negative", "neutral", "mixed"] }
             },
             required: ["ideas", "issues", "missing_features", "pros", "cons", "emotions", "sentiment"]
         }
     },
-    required: ["post_url", "topic", "platform", "items"],
-    additionalProperties: false
+    required: ["post_url", "topic", "platform", "items"]
 };
 
 const AGG_SCHEMA = {
@@ -201,7 +119,7 @@ const AGG_SCHEMA = {
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('AI Demand Intelligence Miner installed');
+    console.log('InsightMiner installed');
 
     // Set up side panel behavior
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
@@ -311,7 +229,21 @@ function buildPerPostPrompt(postObj) {
     const user = `Topic: ${postObj.topic || "unknown"}\nPlatform: ${postObj.platform || "unknown"}\nURL: ${postObj.post?.url || postObj.url || "unknown"}\n\nThread:\nTitle: ${title}\n${post}\n\nComments:${comments ? ` ${comments}` : ' none'}`;
 
     return {
-        system: 'You are a meticulous product researcher. Extract ATOMIC items; follow the schema exactly. No summaries.',
+        system: `You are a product researcher analyzing user discussions. Extract specific insights from the thread below.
+
+For each category, find concrete examples mentioned by users:
+- ideas: What tools, features, or solutions do users want?
+- issues: What problems or frustrations do users mention?
+- missing_features: What functionality is users asking for?
+- pros: What do users like or praise?
+- cons: What complaints or criticisms do users have?
+- emotions: What emotional reactions do users express?
+
+For each item you find, provide:
+- text: A clear description of the insight
+- quote: The exact quote from the discussion that supports it
+
+Be specific and extract real user statements. If no examples exist for a category, return an empty array.`,
         user
     };
 }

@@ -1,4 +1,4 @@
-// Enhanced Options page JavaScript for AI Demand Intelligence Miner
+// Enhanced Options page JavaScript for InsightMiner
 document.addEventListener('DOMContentLoaded', function () {
     const keyEl = document.getElementById('key');
     const modelEl = document.getElementById('model');
@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveBtn = document.getElementById('save');
     const resetBtn = document.getElementById('reset');
     const statusEl = document.getElementById('status');
+    const testKeyBtn = document.getElementById('testKey');
+    const keyStatusEl = document.getElementById('keyStatus');
 
     // Enhanced validation and feedback
     let validationTimeout;
@@ -43,9 +45,11 @@ Be concise, non-speculative, and focus on actionable insights.`
         'AI_MODEL',
         'SEARCH_PROMPT',
         'ANALYSIS_PROMPT'
-    ], (result) => {
+    ], async (result) => {
         if (result.OPENAI_API_KEY) {
             keyEl.value = result.OPENAI_API_KEY;
+            // Load models for existing API key
+            await loadAvailableModels(result.OPENAI_API_KEY);
         }
         if (result.AI_MODEL) {
             modelEl.value = result.AI_MODEL;
@@ -59,6 +63,34 @@ Be concise, non-speculative, and focus on actionable insights.`
             analysisPromptEl.value = result.ANALYSIS_PROMPT;
         } else {
             analysisPromptEl.value = defaultPrompts.analysisPrompt;
+        }
+    });
+
+    // Test API key button
+    testKeyBtn.addEventListener('click', async () => {
+        const apiKey = keyEl.value.trim();
+        if (!apiKey) {
+            showKeyStatus('Please enter an API key first', 'error');
+            return;
+        }
+
+        testKeyBtn.disabled = true;
+        testKeyBtn.innerHTML = '🧪 Testing...';
+        showKeyStatus('Testing API key...', 'info');
+
+        try {
+            const { isValid, models, error } = await testAPIKeyAndGetModels(apiKey);
+            if (isValid) {
+                showKeyStatus('✅ API key is valid!', 'success');
+                await loadAvailableModels(apiKey, models);
+            } else {
+                showKeyStatus(`❌ API key test failed: ${error}`, 'error');
+            }
+        } catch (error) {
+            showKeyStatus(`❌ Error testing API key: ${error.message}`, 'error');
+        } finally {
+            testKeyBtn.disabled = false;
+            testKeyBtn.innerHTML = '🧪 Test API Key';
         }
     });
 
@@ -175,8 +207,8 @@ Be concise, non-speculative, and focus on actionable insights.`
         return isValid;
     }
 
-    // Test API key validity
-    async function testAPIKey(apiKey) {
+    // Test API key validity and get available models
+    async function testAPIKeyAndGetModels(apiKey) {
         try {
             const response = await fetch('https://api.openai.com/v1/models', {
                 method: 'GET',
@@ -185,11 +217,108 @@ Be concise, non-speculative, and focus on actionable insights.`
                     'Content-Type': 'application/json'
                 }
             });
-            return response.ok;
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    isValid: false,
+                    models: [],
+                    error: errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`
+                };
+            }
+
+            const data = await response.json();
+            const models = data.data || [];
+
+            return {
+                isValid: true,
+                models: models,
+                error: null
+            };
         } catch (error) {
             console.error('API key test failed:', error);
-            return false;
+            return {
+                isValid: false,
+                models: [],
+                error: error.message
+            };
         }
+    }
+
+    // Test API key validity (legacy function for save button)
+    async function testAPIKey(apiKey) {
+        const result = await testAPIKeyAndGetModels(apiKey);
+        return result.isValid;
+    }
+
+    // Load available models into dropdown
+    async function loadAvailableModels(apiKey, models = null) {
+        try {
+            if (!models) {
+                const result = await testAPIKeyAndGetModels(apiKey);
+                if (!result.isValid) {
+                    modelEl.innerHTML = '<option value="gpt-4o-mini">API key invalid</option>';
+                    return;
+                }
+                models = result.models;
+            }
+
+            // Filter for chat completion models
+            const chatModels = models.filter(model =>
+                model.id.includes('gpt-4') ||
+                model.id.includes('gpt-3.5') ||
+                model.id.includes('o1')
+            ).sort((a, b) => {
+                // Sort by preference: gpt-4o first, then gpt-4o-mini, then others
+                const order = { 'gpt-4o': 1, 'gpt-4o-mini': 2, 'gpt-4-turbo': 3, 'gpt-3.5-turbo': 4 };
+                return (order[a.id] || 99) - (order[b.id] || 99);
+            });
+
+            // Clear and populate dropdown
+            modelEl.innerHTML = '';
+
+            if (chatModels.length === 0) {
+                modelEl.innerHTML = '<option value="gpt-4o-mini">No models available</option>';
+                return;
+            }
+
+            chatModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+
+                // Add friendly names and descriptions
+                let displayName = model.id;
+                if (model.id === 'gpt-4o') displayName = 'GPT-4o (Most Capable)';
+                else if (model.id === 'gpt-4o-mini') displayName = 'GPT-4o Mini (Fast & Cheap)';
+                else if (model.id === 'gpt-4-turbo') displayName = 'GPT-4 Turbo';
+                else if (model.id === 'gpt-3.5-turbo') displayName = 'GPT-3.5 Turbo';
+
+                option.textContent = displayName;
+                modelEl.appendChild(option);
+            });
+
+            // Set default to gpt-4o-mini if available, otherwise first model
+            const defaultModel = chatModels.find(m => m.id === 'gpt-4o-mini') || chatModels[0];
+            if (defaultModel) {
+                modelEl.value = defaultModel.id;
+            }
+
+        } catch (error) {
+            console.error('Error loading models:', error);
+            modelEl.innerHTML = '<option value="gpt-4o-mini">Error loading models</option>';
+        }
+    }
+
+    // Show key status
+    function showKeyStatus(message, type) {
+        keyStatusEl.textContent = message;
+        keyStatusEl.className = `status ${type}`;
+        keyStatusEl.style.display = 'block';
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            keyStatusEl.style.display = 'none';
+        }, 5000);
     }
 
     // Set field error state

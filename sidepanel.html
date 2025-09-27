@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Demand Intelligence Miner</title>
+    <title>InsightMiner</title>
     <style>
         * {
             margin: 0;
@@ -1029,7 +1029,7 @@
 
         <!-- Enhanced Header with Mode Switcher -->
         <div class="header">
-            <h1>🤖 AI Demand Intelligence Miner</h1>
+            <h1>⛏️ InsightMiner</h1>
             <div class="mode-switcher">
                 <button class="mode-option active" data-mode="sources" aria-label="Sources Mode">
                     <div class="mode-icon sources-icon"></div>
@@ -1262,37 +1262,26 @@
                     </label>
                 </div>
                 
-                <!-- Demand Scoring Weights -->
+                <!-- Analysis Options -->
                 <div class="sidebar-section" style="margin-top: 20px;">
-                    <h3>⚖️ Demand Scoring Weights</h3>
-                    <p style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
-                        Adjust how different factors contribute to demand scoring:
-                    </p>
+                    <h3>⚙️ Analysis Options</h3>
                     <div class="weight-controls">
                         <div class="weight-item">
-                            <label for="frequencyWeight">Frequency (0-1):</label>
-                            <input type="range" id="frequencyWeight" min="0" max="1" step="0.1" value="0.5">
-                            <span id="frequencyValue">0.5</span>
+                            <label for="analysisDepth">Analysis Depth:</label>
+                            <select id="analysisDepth">
+                                <option value="quick">Quick (Basic insights)</option>
+                                <option value="standard" selected>Standard (Recommended)</option>
+                                <option value="deep">Deep (Detailed analysis)</option>
+                            </select>
                         </div>
                         <div class="weight-item">
-                            <label for="recencyWeight">Recency (0-1):</label>
-                            <input type="range" id="recencyWeight" min="0" max="1" step="0.1" value="0.2">
-                            <span id="recencyValue">0.2</span>
-                        </div>
-                        <div class="weight-item">
-                            <label for="engagementWeight">Engagement (0-1):</label>
-                            <input type="range" id="engagementWeight" min="0" max="1" step="0.1" value="0.15">
-                            <span id="engagementValue">0.15</span>
-                        </div>
-                        <div class="weight-item">
-                            <label for="emotionWeight">Emotion (0-1):</label>
-                            <input type="range" id="emotionWeight" min="0" max="1" step="0.1" value="0.1">
-                            <span id="emotionValue">0.1</span>
-                        </div>
-                        <div class="weight-item">
-                            <label for="confidenceWeight">Confidence (0-1):</label>
-                            <input type="range" id="confidenceWeight" min="0" max="1" step="0.1" value="0.05">
-                            <span id="confidenceValue">0.05</span>
+                            <label for="focusArea">Focus Area:</label>
+                            <select id="focusArea">
+                                <option value="all" selected>All Categories</option>
+                                <option value="problems">Problems & Issues</option>
+                                <option value="features">Feature Requests</option>
+                                <option value="emotions">User Emotions</option>
+                            </select>
                         </div>
                     </div>
                     <button id="resetWeights" class="btn btn-secondary" style="margin-top: 12px; width: 100%;">

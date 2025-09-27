@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Demand Intelligence Miner - Settings</title>
+    <title>InsightMiner - Settings</title>
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -362,17 +362,16 @@
                 <span class="input-icon">🔒</span>
             </div>
             <small class="form-help">Your API key is stored locally and never shared with third parties.</small>
+            <button id="testKey" class="btn btn-secondary" style="margin-top: 8px; width: auto; padding: 8px 16px; font-size: 12px;">🧪 Test API Key</button>
+            <div id="keyStatus" class="status" style="margin-top: 8px;"></div>
         </div>
 
         <div class="form-group">
             <label for="model">🤖 AI Model:</label>
             <select id="model">
-                <option value="gpt-4o">GPT-4o (Recommended)</option>
-                <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gpt-4o-mini">Loading models...</option>
             </select>
-            <small class="form-help">Choose the AI model that best fits your needs and budget.</small>
+            <small class="form-help">Choose the AI model that best fits your needs and budget. Models are loaded based on your API key.</small>
         </div>
 
         <div class="form-group">

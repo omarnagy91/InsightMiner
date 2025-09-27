@@ -1569,108 +1569,93 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Setup weight controls
+    // Setup analysis options controls
     function setupWeightControls() {
-        const weightInputs = {
-            frequency: document.getElementById('frequencyWeight'),
-            recency: document.getElementById('recencyWeight'),
-            engagement: document.getElementById('engagementWeight'),
-            emotion: document.getElementById('emotionWeight'),
-            confidence: document.getElementById('confidenceWeight')
-        };
-
-        const weightValues = {
-            frequency: document.getElementById('frequencyValue'),
-            recency: document.getElementById('recencyValue'),
-            engagement: document.getElementById('engagementValue'),
-            emotion: document.getElementById('emotionValue'),
-            confidence: document.getElementById('confidenceValue')
-        };
-
+        const analysisDepthSelect = document.getElementById('analysisDepth');
+        const focusAreaSelect = document.getElementById('focusArea');
         const resetWeightsBtn = document.getElementById('resetWeights');
 
-        // Load saved weights
-        loadWeightSettings();
+        // Load saved settings
+        loadAnalysisSettings();
 
-        // Add event listeners for weight changes
-        Object.entries(weightInputs).forEach(([key, input]) => {
-            input.addEventListener('input', (e) => {
-                const value = parseFloat(e.target.value);
-                weightValues[key].textContent = value.toFixed(1);
-                saveWeightSettings();
+        // Add event listeners for option changes
+        if (analysisDepthSelect) {
+            analysisDepthSelect.addEventListener('change', () => {
+                saveAnalysisSettings();
             });
-        });
+        }
 
-        // Reset weights button
-        resetWeightsBtn.addEventListener('click', () => {
-            resetWeightSettings();
-        });
+        if (focusAreaSelect) {
+            focusAreaSelect.addEventListener('change', () => {
+                saveAnalysisSettings();
+            });
+        }
+
+        // Reset button
+        if (resetWeightsBtn) {
+            resetWeightsBtn.addEventListener('click', () => {
+                resetAnalysisSettings();
+            });
+        }
     }
 
-    // Load weight settings from storage
-    async function loadWeightSettings() {
+    // Load analysis settings from storage
+    async function loadAnalysisSettings() {
         try {
-            const { demandWeights } = await chrome.storage.local.get(['demandWeights']);
-            const weights = demandWeights || {
-                frequency: 0.5,
-                recency: 0.2,
-                engagement: 0.15,
-                emotion: 0.1,
-                confidence: 0.05
-            };
+            const { analysisSettings } = await chrome.storage.local.get(['analysisSettings']);
+            if (analysisSettings) {
+                const analysisDepthSelect = document.getElementById('analysisDepth');
+                const focusAreaSelect = document.getElementById('focusArea');
 
-            // Update UI
-            Object.entries(weights).forEach(([key, value]) => {
-                const input = document.getElementById(`${key}Weight`);
-                const valueSpan = document.getElementById(`${key}Value`);
-                if (input && valueSpan) {
-                    input.value = value;
-                    valueSpan.textContent = value.toFixed(1);
+                if (analysisDepthSelect && analysisSettings.depth) {
+                    analysisDepthSelect.value = analysisSettings.depth;
                 }
-            });
+                if (focusAreaSelect && analysisSettings.focus) {
+                    focusAreaSelect.value = analysisSettings.focus;
+                }
+            }
         } catch (error) {
-            console.error('Error loading weight settings:', error);
+            console.error('Error loading analysis settings:', error);
         }
     }
 
-    // Save weight settings to storage
-    async function saveWeightSettings() {
+    // Save analysis settings to storage
+    async function saveAnalysisSettings() {
         try {
-            const weights = {
-                frequency: parseFloat(document.getElementById('frequencyWeight').value),
-                recency: parseFloat(document.getElementById('recencyWeight').value),
-                engagement: parseFloat(document.getElementById('engagementWeight').value),
-                emotion: parseFloat(document.getElementById('emotionWeight').value),
-                confidence: parseFloat(document.getElementById('confidenceWeight').value)
+            const settings = {
+                depth: document.getElementById('analysisDepth')?.value || 'standard',
+                focus: document.getElementById('focusArea')?.value || 'all'
             };
 
-            await chrome.storage.local.set({ demandWeights: weights });
+            await chrome.storage.local.set({ analysisSettings: settings });
         } catch (error) {
-            console.error('Error saving weight settings:', error);
+            console.error('Error saving analysis settings:', error);
         }
     }
 
-    // Reset weight settings to defaults
-    function resetWeightSettings() {
-        const defaultWeights = {
-            frequency: 0.5,
-            recency: 0.2,
-            engagement: 0.15,
-            emotion: 0.1,
-            confidence: 0.05
-        };
+    // Reset analysis settings to defaults
+    async function resetAnalysisSettings() {
+        try {
+            const analysisDepthSelect = document.getElementById('analysisDepth');
+            const focusAreaSelect = document.getElementById('focusArea');
 
-        Object.entries(defaultWeights).forEach(([key, value]) => {
-            const input = document.getElementById(`${key}Weight`);
-            const valueSpan = document.getElementById(`${key}Value`);
-            if (input && valueSpan) {
-                input.value = value;
-                valueSpan.textContent = value.toFixed(1);
+            if (analysisDepthSelect) {
+                analysisDepthSelect.value = 'standard';
             }
-        });
+            if (focusAreaSelect) {
+                focusAreaSelect.value = 'all';
+            }
 
-        saveWeightSettings();
-        showAIStatus('Weight settings reset to defaults', 'success');
+            const defaultSettings = {
+                depth: 'standard',
+                focus: 'all'
+            };
+
+            await chrome.storage.local.set({ analysisSettings: defaultSettings });
+            showAIStatus('Analysis settings reset to defaults', 'success', 3000);
+        } catch (error) {
+            console.error('Error resetting analysis settings:', error);
+        }
     }
 
     // Continue from last analysis
@@ -1819,4 +1804,5 @@ document.addEventListener('DOMContentLoaded', function () {
         const duration = performance.now() - startTime;
         console.log(`${operation} completed in ${duration.toFixed(2)}ms`);
     }
+});
 });
