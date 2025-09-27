@@ -545,7 +545,18 @@ Return JSON exactly matching the provided schema.`;
  */
 async function generateSearchQueries(topic, sources) {
     try {
+        console.log('generateSearchQueries called with:', { topic, sources });
+
+        if (!topic || !sources || sources.length === 0) {
+            throw new Error('Topic and sources are required');
+        }
+
         const queries = await buildQueries({ topic, sources });
+        console.log('Generated queries:', queries);
+
+        if (!queries || queries.length === 0) {
+            throw new Error('No queries were generated');
+        }
 
         await chrome.storage.local.set({
             [STORAGE_KEYS.generatedQueries]: queries,
@@ -706,7 +717,7 @@ function getPlatformDisplayName(source) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
         try {
-            if (request.type === 'GENERATE_SEARCH_QUERIES') {
+            if (request.type === 'GENERATE_SEARCH_QUERIES' || request.action === 'generateSearchQueries') {
                 // Generate AI-powered search queries
                 const { queries, results, session } = await generateSearchQueries(request.topic, request.sources);
                 sendResponse({ success: true, queries, results, session });
@@ -743,6 +754,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 });
 
                 sendResponse({ ok: true, run });
+
+            } else if (request.action === 'startDataExtraction') {
+                // Start data extraction for automation
+                const result = await handleDataExtraction(request.urls);
+                sendResponse({ success: true, extractedCount: result.extractedData?.length || 0 });
+
+            } else if (request.action === 'startAIAnalysis') {
+                // Start AI analysis for automation
+                const result = await handleAIAnalysis(request.dataSource, request.analysisDepth);
+                const analysisCount = result.aggregateResults ? Object.values(result.aggregateResults).reduce((sum, arr) => sum + arr.length, 0) : 0;
+                sendResponse({ success: true, analysisCount });
+
+            } else if (request.action === 'generateReport') {
+                // Generate report for automation
+                const reportUrl = await generateReport();
+                sendResponse({ success: true, reportUrl });
+
+            } else if (request.action === 'downloadReports') {
+                // Download reports for automation
+                const downloads = await downloadReports();
+                sendResponse({ success: true, downloads });
 
             } else if (request.type === 'RESULTS_EXTRACTED') {
                 // Update extraction stats

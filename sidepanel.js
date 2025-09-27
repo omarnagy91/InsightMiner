@@ -2109,18 +2109,38 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             // Step 1: Search Generation
             updateAutomationStep(1, 'Running', 'Generating search queries...');
-            const searchResponse = await chrome.runtime.sendMessage({
+            console.log('Sending search generation request:', {
                 action: 'generateSearchQueries',
                 topic: topic,
                 sources: selectedPlatforms
             });
 
-            if (searchResponse.success) {
+            let searchResponse;
+            try {
+                searchResponse = await chrome.runtime.sendMessage({
+                    action: 'generateSearchQueries',
+                    topic: topic,
+                    sources: selectedPlatforms
+                });
+            } catch (error) {
+                console.error('Message sending failed, trying alternative:', error);
+                // Try alternative message format
+                searchResponse = await chrome.runtime.sendMessage({
+                    type: 'GENERATE_SEARCH_QUERIES',
+                    topic: topic,
+                    sources: selectedPlatforms
+                });
+            }
+
+            console.log('Search generation response:', searchResponse);
+
+            if (searchResponse && searchResponse.success) {
                 automationState.results.searchResults = searchResponse.results.length;
                 updateAutomationStep(1, 'Completed', `${searchResponse.results.length} results found`);
                 document.getElementById('autoSearchCount').textContent = searchResponse.results.length;
             } else {
-                throw new Error('Search generation failed');
+                console.error('Search generation failed:', searchResponse);
+                throw new Error(`Search generation failed: ${searchResponse?.error || 'Unknown error'}`);
             }
 
             // Step 2: Data Extraction
