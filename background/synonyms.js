@@ -1,5 +1,16 @@
+/**
+ * @file synonyms.js
+ * @description This file contains functions for generating synonyms for a given topic.
+ * It uses the OpenAI API as the primary method and includes a fallback mechanism with pre-defined synonyms for common terms.
+ */
+
 import { callOpenAI } from './openai.js';
 
+/**
+ * @const {object} FALLBACK_SYNONYMS
+ * @description A dictionary of pre-defined synonyms for common keywords. This is used as a fallback
+ * when the OpenAI API call for synonym generation fails or returns no results.
+ */
 const FALLBACK_SYNONYMS = {
     ai: ["artificial intelligence", "machine learning"],
     productivity: ["efficiency", "workflow"],
@@ -10,10 +21,20 @@ const FALLBACK_SYNONYMS = {
     research: ["analysis", "study"]
 };
 
+/**
+ * Splits a topic string into an array of lowercase alphanumeric tokens.
+ * @param {string} topic - The topic string to tokenize.
+ * @returns {Array<string>} An array of tokens.
+ */
 function tokenizeTopic(topic) {
     return topic.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+/**
+ * Finds pre-defined synonyms for a topic from the `FALLBACK_SYNONYMS` list.
+ * @param {string} topic - The topic to find fallback synonyms for.
+ * @returns {Array<string>} An array of found synonyms.
+ */
 function findFallbackSynonyms(topic) {
     const tokens = tokenizeTopic(topic);
     const synonyms = new Set();
@@ -27,6 +48,12 @@ function findFallbackSynonyms(topic) {
     return Array.from(synonyms);
 }
 
+/**
+ * Generates up to two synonyms for a given topic.
+ * It first attempts to use the OpenAI API. If that fails, it uses the local fallback list.
+ * @param {string} topic - The topic for which to generate synonyms.
+ * @returns {Promise<Array<string>>} A promise that resolves to an array containing up to two synonyms.
+ */
 async function generateSynonyms(topic) {
     try {
         const response = await callOpenAI({
@@ -65,4 +92,3 @@ async function generateSynonyms(topic) {
 export {
     generateSynonyms
 };
-

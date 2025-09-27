@@ -92,7 +92,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the constants module.
+     * Defines and adds tests for the constants module.
      */
     testConstants() {
         this.test('Constants module exports', () => {
@@ -118,7 +118,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the storage module.
+     * Defines and adds tests for the storage module.
      */
     testStorage() {
         this.test('Storage module functions exist', () => {
@@ -139,7 +139,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the OpenAI module.
+     * Defines and adds tests for the OpenAI module.
      */
     testOpenAI() {
         this.test('OpenAI module structure', () => {
@@ -161,7 +161,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the search module.
+     * Defines and adds tests for the search module.
      */
     testSearch() {
         this.test('Search module functions', () => {
@@ -190,7 +190,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the scraping module.
+     * Defines and adds tests for the scraping module.
      */
     testScraping() {
         this.test('Content truncation', () => {
@@ -219,7 +219,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the analysis module.
+     * Defines and adds tests for the analysis module.
      */
     testAnalysis() {
         this.test('Demand score calculation', () => {
@@ -252,7 +252,7 @@ class BackgroundModuleTests {
     }
 
     /**
-     * Tests for the deduplication module.
+     * Defines and adds tests for the deduplication module.
      */
     testDeduplication() {
         this.test('Text normalization', () => {
