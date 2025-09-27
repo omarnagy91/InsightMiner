@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAI API Integration**: Migrated from Responses API to Chat Completions API with proper request/response format
 - **Google Search Extraction**: Fixed content script not returning results and enhanced with fallback extraction methods
 - **Progress Tracking**: Fixed extraction completion state not being properly set and communicated to UI
+- **Temperature Parameter**: Fixed OpenAI API temperature parameter compatibility by using default temperature (1) to avoid model restrictions
+- **Content Script Connection**: Enhanced Google search extraction with better content script injection and fallback mechanisms
+- **Full Automation Mode**: Implemented complete workflow automation from search to download with real-time progress tracking
 
 ### Technical Improvements
 - **Modular Architecture**: Split monolithic background.js into focused modules
@@ -86,6 +89,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Storage Integration**: Direct use of stored search results without manual CSV export/import
 - **UI Feedback**: Added auto-load messages and platform breakdown displays
 - **Error Handling**: Enhanced with fallback mechanisms and comprehensive logging
+
+#### **Content Script & Connection Issues**
+- **Script Injection**: Added explicit content script injection before sending messages
+- **Connection Retry**: Implemented fallback extraction when "Could not establish connection" errors occur
+- **Timing Improvements**: Increased wait times for page loading and script injection
+- **Error Recovery**: Added retry mechanisms for failed content script communications
+
+#### **Full Automation Workflow**
+- **One-Click Automation**: Complete workflow from search generation to report download
+- **Real-Time Progress**: Visual progress tracking with step-by-step status updates
+- **Platform Selection**: Choose target platforms (Reddit, Stack Overflow, GitHub, Dev.to, Medium)
+- **Analysis Depth**: Configurable analysis depth (Quick, Standard, Deep)
+- **Automatic Downloads**: JSON reports automatically downloaded for search results, extracted data, and analysis
+- **Error Handling**: Comprehensive error handling with fallback mechanisms
+- **Timer Tracking**: Real-time elapsed time display during automation
 
 ## [2.0.0] - 2024-12-XX
 

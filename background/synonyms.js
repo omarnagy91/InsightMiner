@@ -44,7 +44,7 @@ async function generateSynonyms(topic) {
                 },
                 required: ['synonyms']
             },
-            temperature: 0
+            temperature: 1 // Use default temperature to avoid model restrictions
         });
 
         if (response && Array.isArray(response.synonyms) && response.synonyms.length > 0) {

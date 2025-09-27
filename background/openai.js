@@ -45,7 +45,7 @@ async function callOpenAI({
     user,
     model,
     schema,
-    temperature = 0,
+    temperature = 1, // Use default temperature to avoid model restrictions
     maxRetries = MAX_RETRIES,
     onRetry = () => {
     },
@@ -242,7 +242,7 @@ async function callOpenAIStream({
     system,
     user,
     model,
-    temperature = 0,
+    temperature = 1, // Use default temperature to avoid model restrictions
     maxRetries = MAX_RETRIES,
     onChunk = () => { },
     onComplete = () => { },

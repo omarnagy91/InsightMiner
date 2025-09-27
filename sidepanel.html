@@ -270,6 +270,194 @@
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
         }
 
+        .automation-theme {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .automation-container {
+            padding: 20px;
+            max-width: 100%;
+        }
+
+        .automation-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .automation-header h2 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .automation-header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .platform-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .platform-checkboxes label {
+            display: flex;
+            align-items: center;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .platform-checkboxes input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .automation-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .automation-progress {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .progress-header h3 {
+            color: white;
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+        }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid #4CAF50;
+        }
+
+        .step.completed {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 4px solid #4CAF50;
+        }
+
+        .step-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            width: 40px;
+            text-align: center;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            color: white;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .step-status {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+        }
+
+        .automation-results {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .automation-results h4 {
+            color: white;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+
+        .result-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+        }
+
+        .result-item span:last-child {
+            color: white;
+            font-weight: 600;
+        }
+
         .ai-theme .stats {
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
@@ -1043,6 +1231,10 @@
                     <div class="mode-icon ai-icon"></div>
                     <span>AI Analysis</span>
                 </button>
+                <button class="mode-option" data-mode="automation" aria-label="Full Automation Mode">
+                    <div class="mode-icon automation-icon"></div>
+                    <span>⚡ Auto</span>
+                </button>
             </div>
         </div>
 
@@ -1200,6 +1392,121 @@
                     </div>
                     <div id="currentUrl" class="current-task"></div>
                     <button id="stopExtraction" class="btn btn-danger">Stop Extraction</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Automation Mode -->
+        <div id="automationMode" class="content-area automation-theme">
+            <div class="automation-container">
+                <div class="automation-header">
+                    <h2>⚡ Full Automation Mode</h2>
+                    <p>Complete the entire workflow automatically: Search → Extract → Analyze → Report → Download</p>
+                </div>
+
+                <div class="automation-input">
+                    <div class="form-group">
+                        <label for="autoTopic">🎯 Research Topic:</label>
+                        <input type="text" id="autoTopic" placeholder="e.g., AI tools for developers, productivity apps, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="autoPlatforms">🌐 Target Platforms:</label>
+                        <div class="platform-checkboxes">
+                            <label><input type="checkbox" value="reddit" checked> Reddit</label>
+                            <label><input type="checkbox" value="stackoverflow" checked> Stack Overflow</label>
+                            <label><input type="checkbox" value="github" checked> GitHub</label>
+                            <label><input type="checkbox" value="devto" checked> Dev.to</label>
+                            <label><input type="checkbox" value="medium" checked> Medium</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="autoAnalysisDepth">🔍 Analysis Depth:</label>
+                        <select id="autoAnalysisDepth">
+                            <option value="quick">Quick (Basic insights)</option>
+                            <option value="standard" selected>Standard (Recommended)</option>
+                            <option value="deep">Deep (Detailed analysis)</option>
+                        </select>
+                    </div>
+
+                    <button id="startFullAutomation" class="btn btn-primary automation-btn">
+                        <span class="btn-icon">🚀</span>
+                        <span class="btn-text">Start Full Automation</span>
+                        <div class="btn-loading" style="display: none;">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="automation-progress" id="automationProgress" style="display: none;">
+                    <div class="progress-header">
+                        <h3>🔄 Automation Progress</h3>
+                        <div class="progress-stats">
+                            <span id="automationStage">Initializing...</span>
+                            <span id="automationTime">00:00</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-steps">
+                        <div class="step" id="step1">
+                            <div class="step-icon">🔍</div>
+                            <div class="step-content">
+                                <div class="step-title">Search Generation</div>
+                                <div class="step-status">Pending</div>
+                            </div>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-icon">📊</div>
+                            <div class="step-content">
+                                <div class="step-title">Data Extraction</div>
+                                <div class="step-status">Pending</div>
+                            </div>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-icon">🤖</div>
+                            <div class="step-content">
+                                <div class="step-title">AI Analysis</div>
+                                <div class="step-status">Pending</div>
+                            </div>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-icon">📋</div>
+                            <div class="step-content">
+                                <div class="step-title">Report Generation</div>
+                                <div class="step-status">Pending</div>
+                            </div>
+                        </div>
+                        <div class="step" id="step5">
+                            <div class="step-icon">💾</div>
+                            <div class="step-content">
+                                <div class="step-title">Download Reports</div>
+                                <div class="step-status">Pending</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="automation-results" id="automationResults" style="display: none;">
+                        <h4>📊 Results Summary</h4>
+                        <div class="results-grid">
+                            <div class="result-item">
+                                <span class="result-label">Search Results:</span>
+                                <span id="autoSearchCount">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Extracted Items:</span>
+                                <span id="autoExtractCount">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">AI Insights:</span>
+                                <span id="autoAnalysisCount">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Total Time:</span>
+                                <span id="autoTotalTime">00:00</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

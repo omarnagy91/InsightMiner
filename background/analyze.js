@@ -29,7 +29,7 @@ async function analyzePost({ post, schema, buildPrompt }) {
         system,
         user,
         schema,
-        temperature: 0,
+        temperature: 1, // Use default temperature to avoid model restrictions
         metadata
     });
 
