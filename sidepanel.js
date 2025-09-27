@@ -2067,9 +2067,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Start full automation
     async function startFullAutomation() {
         const topic = document.getElementById('autoTopic').value.trim();
-        const selectedPlatforms = Array.from(document.querySelectorAll('#autoPlatforms input[type="checkbox"]:checked'))
+        const selectedPlatforms = Array.from(document.querySelectorAll('.platform-checkboxes input[type="checkbox"]:checked'))
             .map(cb => cb.value);
         const analysisDepth = document.getElementById('autoAnalysisDepth').value;
+
+        console.log('Automation Debug:', {
+            topic,
+            selectedPlatforms,
+            analysisDepth,
+            checkboxes: document.querySelectorAll('.platform-checkboxes input[type="checkbox"]').length
+        });
 
         if (!topic) {
             alert('Please enter a research topic');

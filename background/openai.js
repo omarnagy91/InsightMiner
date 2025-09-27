@@ -62,10 +62,10 @@ async function getApiKey() {
 
 /**
  * Retrieves the selected AI model from local storage, falling back to a default if not set.
- * @param {string} [defaultModel="gpt-4o-mini"] - The default model to use if none is set in storage.
+ * @param {string} [defaultModel="gpt-5"] - The default model to use if none is set in storage.
  * @returns {Promise<string>} A promise that resolves to the selected AI model name.
  */
-async function getModel(defaultModel = "gpt-4o-mini") {
+async function getModel(defaultModel = "gpt-5") {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['AI_MODEL'], (result) => {
             if (chrome.runtime.lastError) {
@@ -85,7 +85,7 @@ async function getModel(defaultModel = "gpt-4o-mini") {
  * @param {string} params.user - The user prompt.
  * @param {string} [params.model] - The specific model to use.
  * @param {object} [params.schema] - The JSON schema for the expected response (enables JSON mode).
- * @param {number} [params.temperature=0] - The sampling temperature.
+ * @param {number} [params.temperature=1] - The sampling temperature.
  * @param {number} [params.maxRetries=MAX_RETRIES] - The maximum number of retries.
  * @param {function} [params.onRetry=()=>{}] - A callback function for retry attempts.
  * @param {object} [params.metadata={}] - Optional metadata (not sent to API, used for logging).
@@ -96,7 +96,7 @@ async function callOpenAI({
     user,
     model,
     schema,
-    temperature = 0,
+    temperature = 1,
     maxRetries = MAX_RETRIES,
     onRetry = () => {
     },
@@ -302,7 +302,7 @@ function validateAgainstSchema(schema, data, path = "root") {
  * @param {string} params.system - The system prompt.
  * @param {string} params.user - The user prompt.
  * @param {string} [params.model] - The specific model to use.
- * @param {number} [params.temperature=0] - The sampling temperature.
+ * @param {number} [params.temperature=1] - The sampling temperature.
  * @param {number} [params.maxRetries=MAX_RETRIES] - The maximum number of retries.
  * @param {function} [params.onChunk=()=>{}] - A callback function for each received chunk of data.
  * @param {function} [params.onComplete=()=>{}] - A callback function when the stream is complete.
@@ -314,7 +314,7 @@ async function callOpenAIStream({
     system,
     user,
     model,
-    temperature = 0,
+    temperature = 1,
     maxRetries = MAX_RETRIES,
     onChunk = () => { },
     onComplete = () => { },

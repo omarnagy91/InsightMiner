@@ -71,7 +71,7 @@ async function generateSynonyms(topic) {
                 },
                 required: ['synonyms']
             },
-            temperature: 0
+            temperature: 1
         });
 
         if (response && Array.isArray(response.synonyms) && response.synonyms.length > 0) {

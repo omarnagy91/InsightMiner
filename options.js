@@ -112,6 +112,8 @@ Be specific and actionable for immediate implementation.`
         }
         if (result.AI_MODEL) {
             modelEl.value = result.AI_MODEL;
+        } else {
+            modelEl.value = 'gpt-5'; // Default to GPT-5
         }
         searchPromptEl.value = result.SEARCH_PROMPT || defaultPrompts.searchPrompt;
         analysisPromptEl.value = result.ANALYSIS_PROMPT || defaultPrompts.analysisPrompt;
@@ -302,31 +304,46 @@ Be specific and actionable for immediate implementation.`
                 models = result.models;
             }
 
+            // Filter for GPT-5 models only
             const chatModels = models
-                .filter(model => model.id.includes('gpt'))
-                .sort((a, b) => b.id.localeCompare(a.id)); // Sort to have newer models first
+                .filter(model => model.id.includes('gpt-5'))
+                .sort((a, b) => {
+                    // Sort by preference: gpt-5 first, then gpt-5-turbo
+                    const order = {
+                        'gpt-5': 1,
+                        'gpt-5-turbo': 2
+                    };
+                    return (order[a.id] || 99) - (order[b.id] || 99);
+                });
 
             modelEl.innerHTML = '';
             if (chatModels.length === 0) {
-                modelEl.innerHTML = '<option value="gpt-4o-mini">No models available</option>';
+                modelEl.innerHTML = '<option value="gpt-5">No GPT-5 models available</option>';
                 return;
             }
 
             chatModels.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model.id;
-                option.textContent = model.id;
+
+                // Add friendly names for GPT-5 models
+                let displayName = model.id;
+                if (model.id === 'gpt-5') displayName = 'GPT-5 (Latest & Most Capable)';
+                else if (model.id === 'gpt-5-turbo') displayName = 'GPT-5 Turbo (Fast & Powerful)';
+
+                option.textContent = displayName;
                 modelEl.appendChild(option);
             });
 
-            const preferredModel = chatModels.find(m => m.id === 'gpt-4o-mini') || chatModels[0];
+            // Set default to gpt-5 if available, otherwise first model
+            const preferredModel = chatModels.find(m => m.id === 'gpt-5') || chatModels[0];
             if (preferredModel) {
                 modelEl.value = preferredModel.id;
             }
 
         } catch (error) {
             console.error('Error loading models:', error);
-            modelEl.innerHTML = '<option value="gpt-4o-mini">Error loading models</option>';
+            modelEl.innerHTML = '<option value="gpt-5">Error loading models</option>';
         }
     }
 
