@@ -1,4 +1,10 @@
-// Enhanced Options page JavaScript for InsightMiner
+/**
+ * @file options.js
+ * @description This script handles the logic for the extension's options page (options.html).
+ * It manages loading and saving user settings, such as the OpenAI API key, selected AI model,
+ * and custom prompts. It also includes functionality for validating the API key and dynamically
+ * fetching available models from the OpenAI API.
+ */
 document.addEventListener('DOMContentLoaded', function () {
     const keyEl = document.getElementById('key');
     const modelEl = document.getElementById('model');
@@ -13,11 +19,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const testKeyBtn = document.getElementById('testKey');
     const keyStatusEl = document.getElementById('keyStatus');
 
-    // Enhanced validation and feedback
     let validationTimeout;
     let isFormValid = false;
 
-    // Default prompts
+    /**
+     * @const {object} defaultPrompts
+     * @description An object containing the default prompt strings for various AI tasks.
+     * These are used if the user has not provided their own custom prompts.
+     */
     const defaultPrompts = {
         searchPrompt: `You are an expert at creating Google search queries to find relevant discussions about AI tools and productivity software.
 
@@ -84,7 +93,10 @@ Provide:
 Be specific and actionable for immediate implementation.`
     };
 
-    // Load existing settings
+    /**
+     * Loads saved settings from `chrome.storage.local` when the page is opened.
+     * If settings are not found, it populates the fields with default values.
+     */
     chrome.storage.local.get([
         'OPENAI_API_KEY',
         'AI_MODEL',
@@ -96,40 +108,22 @@ Be specific and actionable for immediate implementation.`
     ], async (result) => {
         if (result.OPENAI_API_KEY) {
             keyEl.value = result.OPENAI_API_KEY;
-            // Load models for existing API key
             await loadAvailableModels(result.OPENAI_API_KEY);
         }
         if (result.AI_MODEL) {
             modelEl.value = result.AI_MODEL;
         }
-        if (result.SEARCH_PROMPT) {
-            searchPromptEl.value = result.SEARCH_PROMPT;
-        } else {
-            searchPromptEl.value = defaultPrompts.searchPrompt;
-        }
-        if (result.ANALYSIS_PROMPT) {
-            analysisPromptEl.value = result.ANALYSIS_PROMPT;
-        } else {
-            analysisPromptEl.value = defaultPrompts.analysisPrompt;
-        }
-        if (result.PER_POST_PROMPT) {
-            perPostPromptEl.value = result.PER_POST_PROMPT;
-        } else {
-            perPostPromptEl.value = defaultPrompts.perPostPrompt;
-        }
-        if (result.PITCH_PROMPT) {
-            pitchPromptEl.value = result.PITCH_PROMPT;
-        } else {
-            pitchPromptEl.value = defaultPrompts.pitchPrompt;
-        }
-        if (result.PLAN_PROMPT) {
-            planPromptEl.value = result.PLAN_PROMPT;
-        } else {
-            planPromptEl.value = defaultPrompts.planPrompt;
-        }
+        searchPromptEl.value = result.SEARCH_PROMPT || defaultPrompts.searchPrompt;
+        analysisPromptEl.value = result.ANALYSIS_PROMPT || defaultPrompts.analysisPrompt;
+        perPostPromptEl.value = result.PER_POST_PROMPT || defaultPrompts.perPostPrompt;
+        pitchPromptEl.value = result.PITCH_PROMPT || defaultPrompts.pitchPrompt;
+        planPromptEl.value = result.PLAN_PROMPT || defaultPrompts.planPrompt;
     });
 
-    // Test API key button
+    /**
+     * Handles the click event for the "Test API Key" button.
+     * It validates the key and fetches the available AI models.
+     */
     testKeyBtn.addEventListener('click', async () => {
         const apiKey = keyEl.value.trim();
         if (!apiKey) {
@@ -157,7 +151,10 @@ Be specific and actionable for immediate implementation.`
         }
     });
 
-    // Enhanced save settings with validation
+    /**
+     * Handles the click event for the "Save Settings" button.
+     * It validates the form and saves all settings to `chrome.storage.local`.
+     */
     saveBtn.addEventListener('click', async () => {
         if (!validateForm()) {
             return;
@@ -167,8 +164,10 @@ Be specific and actionable for immediate implementation.`
         const model = modelEl.value;
         const searchPrompt = searchPromptEl.value.trim();
         const analysisPrompt = analysisPromptEl.value.trim();
+        const perPostPrompt = perPostPromptEl.value.trim();
+        const pitchPrompt = pitchPromptEl.value.trim();
+        const planPrompt = planPromptEl.value.trim();
 
-        // Show loading state
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="loading"></span> Saving...';
 
@@ -178,15 +177,14 @@ Be specific and actionable for immediate implementation.`
                 AI_MODEL: model,
                 SEARCH_PROMPT: searchPrompt,
                 ANALYSIS_PROMPT: analysisPrompt,
-                PER_POST_PROMPT: perPostPromptEl.value.trim(),
-                PITCH_PROMPT: pitchPromptEl.value.trim(),
-                PLAN_PROMPT: planPromptEl.value.trim()
+                PER_POST_PROMPT: perPostPrompt,
+                PITCH_PROMPT: pitchPrompt,
+                PLAN_PROMPT: planPrompt
             };
 
-            // Test API key if provided
             if (apiKey) {
-                const isValidKey = await testAPIKey(apiKey);
-                if (!isValidKey) {
+                const { isValid } = await testAPIKeyAndGetModels(apiKey);
+                if (!isValid) {
                     showStatus('Invalid API key. Please check your key and try again.', 'error', 8000);
                     return;
                 }
@@ -204,12 +202,6 @@ Be specific and actionable for immediate implementation.`
 
             showStatus('✅ Settings saved successfully!', 'success', 5000);
 
-            // Add success animation
-            saveBtn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
-            setTimeout(() => {
-                saveBtn.style.background = '';
-            }, 2000);
-
         } catch (error) {
             console.error('Error saving settings:', error);
             showStatus('❌ Error saving settings: ' + error.message, 'error', 8000);
@@ -219,15 +211,16 @@ Be specific and actionable for immediate implementation.`
         }
     });
 
-    // Enhanced form validation
+    /**
+     * Validates the form fields, providing feedback for any errors.
+     * @returns {boolean} True if the form is valid, otherwise false.
+     */
     function validateForm() {
         const apiKey = keyEl.value.trim();
         const searchPrompt = searchPromptEl.value.trim();
         const analysisPrompt = analysisPromptEl.value.trim();
 
-        // Clear previous validation states
         clearValidationStates();
-
         let isValid = true;
         let errorMessage = '';
 
@@ -239,30 +232,18 @@ Be specific and actionable for immediate implementation.`
             setFieldError(keyEl, 'API key should start with "sk-"');
             isValid = false;
             errorMessage = 'API key should start with "sk-"';
-        } else if (apiKey.length < 20) {
-            setFieldError(keyEl, 'API key appears to be too short');
-            isValid = false;
-            errorMessage = 'API key appears to be too short';
         }
 
         if (!searchPrompt) {
             setFieldError(searchPromptEl, 'Search prompt is required');
             isValid = false;
             if (!errorMessage) errorMessage = 'Please enter a search prompt';
-        } else if (searchPrompt.length < 50) {
-            setFieldError(searchPromptEl, 'Search prompt should be more detailed');
-            isValid = false;
-            if (!errorMessage) errorMessage = 'Search prompt should be more detailed';
         }
 
         if (!analysisPrompt) {
             setFieldError(analysisPromptEl, 'Analysis prompt is required');
             isValid = false;
             if (!errorMessage) errorMessage = 'Please enter an analysis prompt';
-        } else if (analysisPrompt.length < 50) {
-            setFieldError(analysisPromptEl, 'Analysis prompt should be more detailed');
-            isValid = false;
-            if (!errorMessage) errorMessage = 'Analysis prompt should be more detailed';
         }
 
         if (!isValid) {
@@ -273,7 +254,11 @@ Be specific and actionable for immediate implementation.`
         return isValid;
     }
 
-    // Test API key validity and get available models
+    /**
+     * Tests an OpenAI API key by making a request to the /v1/models endpoint.
+     * @param {string} apiKey - The API key to test.
+     * @returns {Promise<{isValid: boolean, models: Array<object>, error: string|null}>} An object indicating validity, a list of models, and any error message.
+     */
     async function testAPIKeyAndGetModels(apiKey) {
         try {
             const response = await fetch('https://api.openai.com/v1/models', {
@@ -294,30 +279,18 @@ Be specific and actionable for immediate implementation.`
             }
 
             const data = await response.json();
-            const models = data.data || [];
-
-            return {
-                isValid: true,
-                models: models,
-                error: null
-            };
+            return { isValid: true, models: data.data || [], error: null };
         } catch (error) {
             console.error('API key test failed:', error);
-            return {
-                isValid: false,
-                models: [],
-                error: error.message
-            };
+            return { isValid: false, models: [], error: error.message };
         }
     }
 
-    // Test API key validity (legacy function for save button)
-    async function testAPIKey(apiKey) {
-        const result = await testAPIKeyAndGetModels(apiKey);
-        return result.isValid;
-    }
-
-    // Load available models into dropdown
+    /**
+     * Fetches the list of available AI models from OpenAI and populates the model dropdown.
+     * @param {string} apiKey - A valid OpenAI API key.
+     * @param {Array<object>} [models=null] - An optional pre-fetched list of models.
+     */
     async function loadAvailableModels(apiKey, models = null) {
         try {
             if (!models) {
@@ -329,28 +302,11 @@ Be specific and actionable for immediate implementation.`
                 models = result.models;
             }
 
-            // Filter for chat completion models
-            const chatModels = models.filter(model =>
-                model.id.includes('gpt-5') ||
-                model.id.includes('gpt-4') ||
-                model.id.includes('gpt-3.5') ||
-                model.id.includes('o1')
-            ).sort((a, b) => {
-                // Sort by preference: gpt-5 first, then gpt-4o, then others
-                const order = {
-                    'gpt-5': 1,
-                    'gpt-5-turbo': 2,
-                    'gpt-4o': 3,
-                    'gpt-4o-mini': 4,
-                    'gpt-4-turbo': 5,
-                    'gpt-3.5-turbo': 6
-                };
-                return (order[a.id] || 99) - (order[b.id] || 99);
-            });
+            const chatModels = models
+                .filter(model => model.id.includes('gpt'))
+                .sort((a, b) => b.id.localeCompare(a.id)); // Sort to have newer models first
 
-            // Clear and populate dropdown
             modelEl.innerHTML = '';
-
             if (chatModels.length === 0) {
                 modelEl.innerHTML = '<option value="gpt-4o-mini">No models available</option>';
                 return;
@@ -359,26 +315,13 @@ Be specific and actionable for immediate implementation.`
             chatModels.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model.id;
-
-                // Add friendly names and descriptions
-                let displayName = model.id;
-                if (model.id === 'gpt-5') displayName = 'GPT-5 (Latest & Most Capable)';
-                else if (model.id === 'gpt-5-turbo') displayName = 'GPT-5 Turbo (Fast & Powerful)';
-                else if (model.id === 'gpt-4o') displayName = 'GPT-4o (Most Capable)';
-                else if (model.id === 'gpt-4o-mini') displayName = 'GPT-4o Mini (Fast & Cheap)';
-                else if (model.id === 'gpt-4-turbo') displayName = 'GPT-4 Turbo';
-                else if (model.id === 'gpt-3.5-turbo') displayName = 'GPT-3.5 Turbo';
-
-                option.textContent = displayName;
+                option.textContent = model.id;
                 modelEl.appendChild(option);
             });
 
-            // Set default to gpt-5 if available, then gpt-4o-mini, otherwise first model
-            const defaultModel = chatModels.find(m => m.id === 'gpt-5') ||
-                chatModels.find(m => m.id === 'gpt-4o-mini') ||
-                chatModels[0];
-            if (defaultModel) {
-                modelEl.value = defaultModel.id;
+            const preferredModel = chatModels.find(m => m.id === 'gpt-4o-mini') || chatModels[0];
+            if (preferredModel) {
+                modelEl.value = preferredModel.id;
             }
 
         } catch (error) {
@@ -387,124 +330,97 @@ Be specific and actionable for immediate implementation.`
         }
     }
 
-    // Show key status
+    /**
+     * Displays a status message for the API key test.
+     * @param {string} message - The message to display.
+     * @param {string} type - The type of message ('success', 'error', 'info').
+     */
     function showKeyStatus(message, type) {
         keyStatusEl.textContent = message;
         keyStatusEl.className = `status ${type}`;
         keyStatusEl.style.display = 'block';
-
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             keyStatusEl.style.display = 'none';
         }, 5000);
     }
 
-    // Set field error state
+    /**
+     * Sets the visual error state for a form field.
+     * @param {HTMLElement} field - The input or textarea element.
+     * @param {string} message - The error message for the tooltip.
+     */
     function setFieldError(field, message) {
         field.style.borderColor = '#f44336';
-        field.style.boxShadow = '0 0 0 3px rgba(244, 67, 54, 0.1)';
-
-        // Add error tooltip
         field.setAttribute('data-error', message);
         field.classList.add('error-field');
     }
 
-    // Clear validation states
+    /**
+     * Clears all visual validation states from form fields.
+     */
     function clearValidationStates() {
-        const fields = [keyEl, searchPromptEl, analysisPromptEl];
-        fields.forEach(field => {
+        [keyEl, searchPromptEl, analysisPromptEl, perPostPromptEl, pitchPromptEl, planPromptEl].forEach(field => {
             field.style.borderColor = '';
-            field.style.boxShadow = '';
             field.removeAttribute('data-error');
             field.classList.remove('error-field');
         });
     }
 
-    // Enhanced reset to defaults
+    /**
+     * Handles the click event for the "Reset" button.
+     * It confirms with the user and then resets all settings to their default values.
+     */
     resetBtn.addEventListener('click', () => {
         if (confirm('Are you sure you want to reset all settings to defaults? This will clear your custom prompts and API key.')) {
-            // Clear all fields
             keyEl.value = '';
-            modelEl.value = 'gpt-4o';
+            modelEl.innerHTML = '<option value="gpt-4o-mini">gpt-4o-mini</option>';
             searchPromptEl.value = defaultPrompts.searchPrompt;
             analysisPromptEl.value = defaultPrompts.analysisPrompt;
             perPostPromptEl.value = defaultPrompts.perPostPrompt;
             pitchPromptEl.value = defaultPrompts.pitchPrompt;
             planPromptEl.value = defaultPrompts.planPrompt;
-
-            // Clear validation states
             clearValidationStates();
-
-            // Show success message
             showStatus('🔄 Settings reset to defaults', 'success', 3000);
-
-            // Add reset animation
-            resetBtn.style.background = 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)';
-            setTimeout(() => {
-                resetBtn.style.background = '';
-            }, 1000);
         }
     });
 
-    // Enhanced status display with animations
+    /**
+     * Displays a status message to the user (e.g., "Settings saved").
+     * @param {string} message - The message to display.
+     * @param {string} type - The type of message ('success', 'error').
+     * @param {number} [duration=3000] - The duration in milliseconds to show the message.
+     */
     function showStatus(message, type, duration = 3000) {
-        // Clear any existing timeout
         if (statusEl.timeoutId) {
             clearTimeout(statusEl.timeoutId);
         }
-
         statusEl.textContent = message;
         statusEl.className = `status ${type}`;
-
-        // Add animation
         statusEl.style.display = 'block';
-        statusEl.style.opacity = '0';
-        statusEl.style.transform = 'translateY(-10px)';
-
-        requestAnimationFrame(() => {
-            statusEl.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            statusEl.style.opacity = '1';
-            statusEl.style.transform = 'translateY(0)';
-        });
-
-        // Auto-hide with animation
         statusEl.timeoutId = setTimeout(() => {
-            statusEl.style.opacity = '0';
-            statusEl.style.transform = 'translateY(-10px)';
-
-            setTimeout(() => {
-                statusEl.style.display = 'none';
-                statusEl.timeoutId = null;
-            }, 300);
+            statusEl.style.display = 'none';
         }, duration);
     }
 
-    // Real-time validation
+    /**
+     * Sets up real-time validation listeners for form fields.
+     */
     function setupRealTimeValidation() {
-        const fields = [keyEl, searchPromptEl, analysisPromptEl];
-
-        fields.forEach(field => {
+        [keyEl, searchPromptEl, analysisPromptEl].forEach(field => {
             field.addEventListener('input', () => {
-                // Clear validation states on input
                 clearValidationStates();
-
-                // Debounce validation
                 clearTimeout(validationTimeout);
-                validationTimeout = setTimeout(() => {
-                    validateForm();
-                }, 500);
+                validationTimeout = setTimeout(validateForm, 500);
             });
-
-            field.addEventListener('blur', () => {
-                validateForm();
-            });
+            field.addEventListener('blur', validateForm);
         });
     }
 
-    // Enhanced keyboard shortcuts
+    /**
+     * Sets up keyboard shortcuts for saving (Ctrl/Cmd + S) and resetting (Ctrl/Cmd + R).
+     */
     function setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Only handle shortcuts when not in input fields
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
@@ -512,61 +428,17 @@ Be specific and actionable for immediate implementation.`
                 }
                 return;
             }
-
-            switch (e.key) {
-                case 's':
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        saveBtn.click();
-                    }
-                    break;
-                case 'r':
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        resetBtn.click();
-                    }
-                    break;
-                case 'Escape':
-                    // Clear status messages
-                    if (statusEl.style.display === 'block') {
-                        statusEl.style.display = 'none';
-                    }
-                    break;
+            if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                saveBtn.click();
+            } else if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                resetBtn.click();
             }
         });
     }
 
-    // Initialize enhanced features
+    // Initialize all features.
     setupRealTimeValidation();
     setupKeyboardShortcuts();
-
-    // Add loading spinner CSS
-    const style = document.createElement('style');
-    style.textContent = `
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 8px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .error-field {
-            animation: shake 0.5s ease-in-out;
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-    `;
-    document.head.appendChild(style);
 });

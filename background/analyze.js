@@ -1,8 +1,20 @@
+/**
+ * @file analyze.js
+ * @description This file contains the core logic for analyzing extracted data using the OpenAI API.
+ * It manages concurrent API requests, batch processing, data aggregation, and demand scoring.
+ */
+
 import { callOpenAI } from './openai.js';
 import { CONCURRENCY_LIMIT, BATCH_SIZE, BATCH_DELAY, STORAGE_KEYS, DEMAND_SCORING_DEFAULTS, DEMAND_SCORE_SETTINGS } from './constants.js';
 import { saveAnalysisRun } from './storage.js';
 import { mergeItems } from './dedupe.js';
 
+/**
+ * Splits an array into smaller chunks of a specified size.
+ * @param {Array<any>} array - The array to split.
+ * @param {number} size - The size of each chunk.
+ * @returns {Array<Array<any>>} An array of chunks.
+ */
 function chunk(array, size) {
     const chunks = [];
     for (let i = 0; i < array.length; i += size) {
@@ -11,6 +23,15 @@ function chunk(array, size) {
     return chunks;
 }
 
+/**
+ * Analyzes a single post using the OpenAI API.
+ * It builds a prompt, calls the API, and returns the structured result.
+ * @param {object} params - The parameters for analyzing the post.
+ * @param {object} params.post - The post object to analyze.
+ * @param {object} params.schema - The JSON schema for the expected AI response.
+ * @param {function} params.buildPrompt - The function to build the AI prompt.
+ * @returns {Promise<object>} A promise that resolves to the analysis result from the AI.
+ */
 async function analyzePost({ post, schema, buildPrompt }) {
     const { system, user } = buildPrompt(post);
     const metadata = {
@@ -39,6 +60,14 @@ async function analyzePost({ post, schema, buildPrompt }) {
     return result;
 }
 
+/**
+ * Processes an array of items concurrently with a specified limit.
+ * @param {Array<any>} items - The array of items to process.
+ * @param {function} handler - The async function to handle each item.
+ * @param {number} [limit=CONCURRENCY_LIMIT] - The maximum number of concurrent operations.
+ * @param {function} [onProgress=() => {}] - A callback function to report progress.
+ * @returns {Promise<Array<any>>} A promise that resolves to an array of results.
+ */
 async function processWithConcurrency(items, handler, limit = CONCURRENCY_LIMIT, onProgress = () => {
 }) {
     const queue = [...items];
@@ -82,6 +111,13 @@ async function processWithConcurrency(items, handler, limit = CONCURRENCY_LIMIT,
     return results;
 }
 
+/**
+ * Calculates a demand score for an item based on various weighted factors.
+ * @param {object} item - The insight item to score.
+ * @param {Array<object>} groupItems - All items in the same category for frequency calculation.
+ * @param {object} weights - The weights for different scoring factors (frequency, recency, etc.).
+ * @returns {number} The calculated demand score.
+ */
 function calculateDemandScore(item, groupItems, weights) {
     const {
         frequency: freqWeight,
@@ -104,6 +140,12 @@ function calculateDemandScore(item, groupItems, weights) {
         confidenceWeight * confidenceScore;
 }
 
+/**
+ * Attaches demand scores to all items within categorized groups.
+ * @param {object} groups - An object where keys are categories and values are arrays of items.
+ * @param {object} weights - The weights to use for scoring.
+ * @returns {object} The groups object with demand scores added to each item.
+ */
 function attachDemandScores(groups, weights) {
     const scored = {};
     for (const [category, items] of Object.entries(groups)) {
@@ -116,7 +158,15 @@ function attachDemandScores(groups, weights) {
     return scored;
 }
 
-// Batch processing for large datasets
+/**
+ * Processes a large number of items in batches to avoid rate limiting and reduce memory usage.
+ * @param {Array<any>} items - The array of items to process.
+ * @param {function} handler - The async function to handle each item.
+ * @param {number} [batchSize=BATCH_SIZE] - The number of items in each batch.
+ * @param {number} [delay=BATCH_DELAY] - The delay in milliseconds between batches.
+ * @param {function} [onProgress=() => {}] - A callback function to report progress.
+ * @returns {Promise<Array<any>>} A promise that resolves to an array of results.
+ */
 async function processBatches(items, handler, batchSize = BATCH_SIZE, delay = BATCH_DELAY, onProgress = () => { }) {
     const batches = chunk(items, batchSize);
     const results = [];
@@ -148,6 +198,19 @@ async function processBatches(items, handler, batchSize = BATCH_SIZE, delay = BA
     return results;
 }
 
+/**
+ * Orchestrates the entire analysis process for a collection of posts.
+ * It handles concurrency or batching, runs the analysis, merges duplicates, scores the results,
+ * and saves the final analysis run.
+ * @param {object} params - The parameters for the analysis.
+ * @param {Array<object>} params.posts - The array of post objects to analyze.
+ * @param {object} params.schema - The JSON schema for the per-post analysis.
+ * @param {function} params.buildPrompt - The function to build the AI prompt for each post.
+ * @param {function} [params.onProgress=() => {}] - A callback for reporting progress.
+ * @param {object} [params.weights=DEMAND_SCORING_DEFAULTS] - The weights for demand scoring.
+ * @param {boolean} [params.useBatching=true] - Whether to use batch processing for large datasets.
+ * @returns {Promise<object>} A promise that resolves to the completed analysis run object.
+ */
 async function analyzePosts({
     posts,
     schema,
@@ -206,4 +269,3 @@ async function analyzePosts({
 export {
     analyzePosts
 };
-

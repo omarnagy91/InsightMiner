@@ -1,9 +1,18 @@
-// Integration test for the new generic AI Demand Intelligence Miner
-// This file tests the complete workflow from search generation to final PRD generation
+/**
+ * @file test-integration.js
+ * @description This file contains an integration test suite for the InsightMiner extension.
+ * It tests the complete workflow, from search query generation to final PRD generation,
+ * by checking the schemas and logic at each major step of the process.
+ */
 
 console.log('🧪 Starting AI Demand Intelligence Miner Integration Test');
 
-// Test 1: Search Query Generation
+/**
+ * @function testSearchQueryGeneration
+ * @description Tests the initial step of generating search queries.
+ * This is a placeholder test that simulates the input for the search generation process.
+ * @returns {Promise<boolean>} A promise that resolves to true if the test passes.
+ */
 async function testSearchQueryGeneration() {
     console.log('📝 Testing search query generation...');
 
@@ -21,7 +30,11 @@ async function testSearchQueryGeneration() {
     }
 }
 
-// Test 2: Per-Post Extraction Schema
+/**
+ * @function testPerPostExtractionSchema
+ * @description Validates the structure of the data object expected after a single post is extracted and analyzed.
+ * @returns {Promise<boolean>} A promise that resolves to true if the mock data matches the schema.
+ */
 async function testPerPostExtractionSchema() {
     console.log('🔍 Testing per-post extraction schema...');
 
@@ -96,7 +109,11 @@ async function testPerPostExtractionSchema() {
     }
 }
 
-// Test 3: Aggregation and Scoring
+/**
+ * @function testAggregationAndScoring
+ * @description Tests the logic for aggregating insights and calculating a demand score.
+ * @returns {Promise<boolean>} A promise that resolves to true if the scoring logic is sound.
+ */
 async function testAggregationAndScoring() {
     console.log('📊 Testing aggregation and scoring...');
 
@@ -147,7 +164,11 @@ async function testAggregationAndScoring() {
     }
 }
 
-// Test 4: Pitch Generation Schema
+/**
+ * @function testPitchGenerationSchema
+ * @description Validates the schema of the generated solution pitches.
+ * @returns {Promise<boolean>} A promise that resolves to true if the mock data matches the schema.
+ */
 async function testPitchGenerationSchema() {
     console.log('💡 Testing pitch generation schema...');
 
@@ -188,73 +209,32 @@ async function testPitchGenerationSchema() {
     }
 }
 
-// Test 5: Final Plan Schema
+/**
+ * @function testFinalPlanSchema
+ * @description Validates the comprehensive schema of the final generated MVP plan.
+ * @returns {Promise<boolean>} A promise that resolves to true if the mock data matches the schema.
+ */
 async function testFinalPlanSchema() {
     console.log('🚀 Testing final plan schema...');
 
     try {
         const mockFinalPlan = {
             elevator_pitch: "Build AI code assistant for developers to reduce debugging time",
-            target_user_persona: {
-                name: "Alex Developer",
-                role: "Software Developer",
-                context: "Works at a tech startup",
-                goals: ["Write better code", "Reduce debugging time"],
-                pain_points: ["Time-consuming debugging", "Inefficient tools"],
-                success_criteria: ["50% reduction in debugging time", "Improved code quality"]
-            },
-            tech_stack: {
-                frontend: ["React", "TypeScript"],
-                backend: ["Node.js", "Express"],
-                data: ["PostgreSQL", "Redis"],
-                auth: "JWT",
-                ai: ["OpenAI GPT-4", "Code analysis models"],
-                infra: ["Vercel", "AWS"],
-                why_this_stack: "Fast to implement and scale"
-            },
+            target_user_persona: { name: "Alex Developer", role: "Software Developer", context: "Works at a tech startup", goals: ["Write better code"], pain_points: ["Time-consuming debugging"], success_criteria: ["50% reduction in debugging time"] },
+            tech_stack: { frontend: ["React"], backend: ["Node.js"], data: ["PostgreSQL"], auth: "JWT", ai: ["OpenAI GPT-4"], infra: ["Vercel"], why_this_stack: "Fast to implement" },
             prd: {
                 problem: "Developers spend too much time debugging",
-                goals: ["Reduce debugging time", "Improve code quality"],
-                primary_user_jtbd: ["As a developer, I want AI assistance so that I can write better code faster"],
-                scope_mvp: [{
-                    feature: "Code analysis",
-                    acceptance_criteria: ["Analyzes code for bugs", "Provides suggestions"]
-                }],
-                out_of_scope: ["Advanced AI training", "Multi-language support"],
-                user_flows: [{
-                    name: "Code Analysis Flow",
-                    steps: ["Upload code", "Get analysis", "Review suggestions"]
-                }],
-                data_model: [{
-                    entity: "CodeAnalysis",
-                    fields: [
-                        { name: "id", type: "string" },
-                        { name: "code", type: "text" },
-                        { name: "suggestions", type: "json" }
-                    ]
-                }],
-                apis: [{
-                    method: "POST",
-                    path: "/api/analyze",
-                    request: "{ code: string }",
-                    response: "{ suggestions: array }"
-                }],
-                non_functional: {
-                    perf: "Response time < 2 seconds",
-                    privacy: "Code not stored permanently",
-                    costs: "Under $100/month for MVP"
-                },
-                success_metrics: [{
-                    metric: "user_activation_rate",
-                    target: "≥ 80%"
-                }],
-                risks: ["AI model accuracy", "User adoption"],
-                "1_day_plan": [
-                    "Hour 0–2: scaffold stack, auth, basic UI",
-                    "Hour 2–6: core feature v0 + extraction pipeline",
-                    "Hour 6–8: polish + telemetry",
-                    "Hour 8–12: dogfood + bugfix + deploy + share link"
-                ]
+                goals: ["Reduce debugging time"],
+                primary_user_jtbd: ["Write better code faster"],
+                scope_mvp: [{ feature: "Code analysis", acceptance_criteria: ["Analyzes code for bugs"] }],
+                out_of_scope: ["Advanced AI training"],
+                user_flows: [{ name: "Code Analysis Flow", steps: ["Upload code", "Get analysis"] }],
+                data_model: [{ entity: "CodeAnalysis", fields: [{ name: "id", type: "string" }] }],
+                apis: [{ method: "POST", path: "/api/analyze", request: "{ code: string }", response: "{ suggestions: array }" }],
+                non_functional: { perf: "Response time < 2s", privacy: "Code not stored", costs: "Under $100/month" },
+                success_metrics: [{ metric: "user_activation_rate", target: "≥ 80%" }],
+                risks: ["AI model accuracy"],
+                "1_day_plan": ["Hour 0–8: Build", "Hour 8–12: Test and deploy"]
             }
         };
 
@@ -274,7 +254,11 @@ async function testFinalPlanSchema() {
     }
 }
 
-// Test 6: Platform Support
+/**
+ * @function testPlatformSupport
+ * @description Checks that all supported platforms have a corresponding display name.
+ * @returns {Promise<boolean>} A promise that resolves to true if all platforms are correctly configured.
+ */
 async function testPlatformSupport() {
     console.log('🌐 Testing platform support...');
 
@@ -285,18 +269,11 @@ async function testPlatformSupport() {
         ];
 
         const platformDisplayNames = {
-            'reddit': 'Reddit',
-            'stackoverflow': 'Stack Overflow',
-            'github': 'GitHub',
-            'devto': 'Dev.to',
-            'medium': 'Medium',
-            'producthunt': 'Product Hunt',
-            'quora': 'Quora',
-            'hackernews': 'Hacker News',
-            'hn': 'Hacker News'
+            'reddit': 'Reddit', 'stackoverflow': 'Stack Overflow', 'github': 'GitHub',
+            'devto': 'Dev.to', 'medium': 'Medium', 'producthunt': 'Product Hunt',
+            'quora': 'Quora', 'hackernews': 'Hacker News', 'hn': 'Hacker News'
         };
 
-        // Test that all platforms have display names
         for (const platform of supportedPlatforms) {
             if (!platformDisplayNames[platform]) {
                 throw new Error(`Missing display name for platform: ${platform}`);
@@ -311,7 +288,11 @@ async function testPlatformSupport() {
     }
 }
 
-// Run all tests
+/**
+ * @function runAllTests
+ * @description Runs all integration tests in the suite and reports the final results.
+ * @returns {Promise<boolean>} A promise that resolves to true if all tests pass.
+ */
 async function runAllTests() {
     console.log('🚀 Running AI Demand Intelligence Miner Integration Tests\n');
 
@@ -358,18 +339,10 @@ async function runAllTests() {
 
 // Export for use in other files
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        runAllTests,
-        testSearchQueryGeneration,
-        testPerPostExtractionSchema,
-        testAggregationAndScoring,
-        testPitchGenerationSchema,
-        testFinalPlanSchema,
-        testPlatformSupport
-    };
+    module.exports = { runAllTests, testSearchQueryGeneration, testPerPostExtractionSchema, testAggregationAndScoring, testPitchGenerationSchema, testFinalPlanSchema, testPlatformSupport };
 }
 
-// Run tests if this file is executed directly
+// Run tests if this file is executed directly in a Node.js environment
 if (typeof window === 'undefined') {
     runAllTests();
 }

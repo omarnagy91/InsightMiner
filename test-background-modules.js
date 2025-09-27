@@ -1,9 +1,15 @@
-/*
- * Unit tests for background modules
- * Run these tests in the browser console or Node.js environment
+/**
+ * @file test-background-modules.js
+ * @description This file contains unit tests for the background script modules.
+ * It includes a mock for Chrome APIs to allow testing in different environments (like Node.js or a browser console)
+ * and a simple test runner to execute and report on the tests.
  */
 
-// Mock Chrome APIs for testing
+/**
+ * @const {object} mockChrome
+ * @description A mock of the Chrome API to enable testing of extension-specific functionality
+ * in an environment where the `chrome` object is not available. It mocks `storage` and `downloads` APIs.
+ */
 const mockChrome = {
     storage: {
         local: {
@@ -43,7 +49,10 @@ const mockChrome = {
     }
 };
 
-// Test suite
+/**
+ * @class BackgroundModuleTests
+ * @description A simple test suite runner for the background modules.
+ */
 class BackgroundModuleTests {
     constructor() {
         this.tests = [];
@@ -51,10 +60,19 @@ class BackgroundModuleTests {
         this.failed = 0;
     }
 
+    /**
+     * Adds a test to the suite.
+     * @param {string} name - The name of the test.
+     * @param {function} testFn - The function that contains the test logic. It should throw an error on failure.
+     */
     test(name, testFn) {
         this.tests.push({ name, testFn });
     }
 
+    /**
+     * Runs all the tests in the suite and logs the results.
+     * @returns {Promise<boolean>} A promise that resolves to true if all tests pass, otherwise false.
+     */
     async run() {
         console.log('🧪 Running Background Module Tests...\n');
 
@@ -73,7 +91,9 @@ class BackgroundModuleTests {
         return this.passed === this.tests.length;
     }
 
-    // Test constants module
+    /**
+     * Tests for the constants module.
+     */
     testConstants() {
         this.test('Constants module exports', () => {
             // This would test if constants are properly exported
@@ -97,7 +117,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test storage module
+    /**
+     * Tests for the storage module.
+     */
     testStorage() {
         this.test('Storage module functions exist', () => {
             const expectedFunctions = ['saveVersionedFile', 'saveSearchRun', 'saveExtractionRun'];
@@ -116,7 +138,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test OpenAI module
+    /**
+     * Tests for the OpenAI module.
+     */
     testOpenAI() {
         this.test('OpenAI module structure', () => {
             const expectedFunctions = ['callOpenAI', 'getApiKey', 'getModel'];
@@ -136,7 +160,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test search module
+    /**
+     * Tests for the search module.
+     */
     testSearch() {
         this.test('Search module functions', () => {
             const expectedFunctions = ['buildQueries', 'saveSearchSession', 'storeSearchResults'];
@@ -163,7 +189,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test scraping module
+    /**
+     * Tests for the scraping module.
+     */
     testScraping() {
         this.test('Content truncation', () => {
             const longText = 'a'.repeat(50000);
@@ -190,7 +218,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test analysis module
+    /**
+     * Tests for the analysis module.
+     */
     testAnalysis() {
         this.test('Demand score calculation', () => {
             const item = {
@@ -221,7 +251,9 @@ class BackgroundModuleTests {
         });
     }
 
-    // Test deduplication module
+    /**
+     * Tests for the deduplication module.
+     */
     testDeduplication() {
         this.test('Text normalization', () => {
             const text = 'Hello, World! 123';
@@ -242,7 +274,10 @@ class BackgroundModuleTests {
         });
     }
 
-    // Run all tests
+    /**
+     * Runs all defined test suites.
+     * @returns {Promise<boolean>} A promise that resolves to true if all tests pass.
+     */
     async runAllTests() {
         this.testConstants();
         this.testStorage();

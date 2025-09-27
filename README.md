@@ -211,26 +211,17 @@ The AI Analysis Tab provides a comprehensive, full-screen view of your multi-pla
 ## File Structure
 
 ```
-chrome-extractor/
-├── manifest.json          # Extension configuration with side panel setup
-├── background.js          # Background service worker with AI analysis pipeline
-├── content-google.js      # Google search results extraction
-├── content-reddit.js      # Reddit content extraction
-├── content-stackoverflow.js # Stack Overflow content extraction
-├── content-github.js      # GitHub content extraction
-├── content-devto.js       # Dev.to content extraction
-├── content-medium.js      # Medium content extraction
-├── popup.html             # Enhanced popup interface (fallback)
-├── popup.js               # Popup functionality
-├── sidepanel.html         # Modern three-mode sidebar interface
-├── sidepanel.js           # Enhanced sidebar with AI analysis
-├── ai_analysis.html       # Full-screen AI analysis results page
-├── ai_analysis.js         # AI analysis tab functionality
-├── options.html           # OpenAI API key management page
-├── options.js             # Options page functionality
-├── icons/                 # Extension icons (16px, 32px, 48px, 128px)
-├── README.md              # This file
-└── INSTALLATION.md        # Installation guide
+.
+├── manifest.json          # Extension configuration, permissions, and scripts
+├── background.js          # Main service worker, acts as a central controller
+├── background/            # Modules for handling specific background tasks (AI, search, scraping)
+├── content-*.js           # Content scripts for data extraction from different websites
+├── sidepanel.html / .js   # UI and logic for the main extension side panel
+├── ai_analysis.html / .js # UI and logic for the full-screen analysis report
+├── report_ui.html / .js   # UI and logic for the interactive insights report
+├── options.html / .js     # UI and logic for the extension's settings page
+├── icons/                 # Extension icons in various sizes
+└── README.md              # This file
 ```
 
 ## 📁 Export Formats
@@ -301,12 +292,31 @@ The extension requires the following permissions:
 
 ## Development
 
-To modify or extend the extension:
+This extension is built with standard HTML, CSS, and JavaScript, with no external build tools required, making it easy to modify and extend.
 
-1. Make your changes to the relevant files
-2. Go to `chrome://extensions/`
-3. Click the refresh icon on the extension card
-4. Test your changes
+### Core Concepts
+
+The extension is architected around three main types of scripts:
+
+*   **Service Worker (`background.js` & `background/`):** This is the brain of the extension. It runs persistently in the background, manages the extension's state, handles all communication with the OpenAI API, orchestrates the data extraction process across multiple tabs, and listens for messages from other parts of the extension.
+*   **Content Scripts (`content-*.js`):** These are the arms and legs. They are injected directly into the web pages of the supported platforms (Google, Reddit, etc.). Their sole purpose is to scrape the required data from the page's DOM and send it back to the service worker for processing.
+*   **UI Scripts (`sidepanel.js`, `options.js`, etc.):** These scripts control the user-facing components, such as the side panel and options page. They handle user input, display data and progress updates, and send commands to the service worker to initiate tasks.
+
+### Debugging Tips
+
+*   **Service Worker:** To debug the background script, navigate to `chrome://extensions/`, find the InsightMiner extension, and click the "Service Worker" link. This will open a dedicated DevTools window where you can view console logs, inspect network requests, and debug the script.
+*   **Side Panel:** To debug the side panel UI, right-click anywhere inside the panel and select "Inspect". This will open a DevTools window for the side panel's HTML and JavaScript context.
+*   **Content Scripts:** To debug a content script, open the DevTools on the target website (e.g., a Reddit post). Console logs from the content script will appear in the site's main console. You can also find the script's source code under the "Sources" tab > "Content scripts" to set breakpoints.
+
+### Running Tests
+
+The repository includes several files for testing:
+*   `test-background-modules.js`: Unit tests for individual background modules.
+*   `test-functionality.js`: High-level checks for core extension functionality.
+*   `test-integration.js`: An integration test suite that verifies the end-to-end workflow.
+*   `test-modules.js`: A simple script to verify that all modules load correctly.
+
+These tests are designed for developer verification and can be run in a browser console or a Node.js environment.
 
 ## Security & Privacy
 

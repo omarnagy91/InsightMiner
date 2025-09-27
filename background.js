@@ -1,3 +1,17 @@
+/**
+ * @file background.js
+ * @description This is the service worker for the InsightMiner Chrome extension.
+ * It handles all core background tasks, including:
+ * - Extension initialization and setup.
+ * - Communication with content scripts and UI components (side panel, options page).
+ * - Orchestrating the multi-step process of search, extraction, and analysis.
+ * - AI-powered search query generation.
+ * - Data extraction from various platforms by managing tabs and content scripts.
+ * - Interaction with the OpenAI API for data analysis, pitch generation, and final plan creation.
+ * - State management for ongoing processes (search, extraction, analysis).
+ * - Handling user notifications and context menu interactions.
+ */
+
 import { callOpenAI } from './background/openai.js';
 import {
     PLATFORM_LABELS,
@@ -117,7 +131,10 @@ const AGG_SCHEMA = {
     additionalProperties: true
 };
 
-// Initialize extension
+/**
+ * Initializes the extension upon installation.
+ * Sets up the side panel to open on action click and initializes local storage with default values.
+ */
 chrome.runtime.onInstalled.addListener(() => {
     console.log('InsightMiner installed');
 
@@ -151,7 +168,12 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
-// Notification system for manual intervention
+/**
+ * Displays a Chrome notification to the user.
+ * @param {string} title - The title of the notification.
+ * @param {string} message - The main message content of the notification.
+ * @param {string} [type='basic'] - The type of notification (e.g., 'basic', 'list').
+ */
 function showNotification(title, message, type = 'basic') {
     chrome.notifications.create({
         type: type,
@@ -165,7 +187,9 @@ function showNotification(title, message, type = 'basic') {
     });
 }
 
-// Handle notification clicks
+/**
+ * Handles clicks on notifications. Opens the side panel and clears the notification.
+ */
 chrome.notifications.onClicked.addListener((notificationId) => {
     chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT }).catch(() => {
         // Fallback: try to open in any available window
@@ -178,6 +202,10 @@ chrome.notifications.onClicked.addListener((notificationId) => {
     chrome.notifications.clear(notificationId);
 });
 
+/**
+ * Handles clicks on notification buttons.
+ * Opens the side panel if the "Open Extension" button is clicked.
+ */
 chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
     if (buttonIndex === 0) {
         // Open Extension button
@@ -193,9 +221,13 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
     chrome.notifications.clear(notificationId);
 });
 
-// ---- OpenAI API Helpers ----
-
-// ---- Text sanitization ----
+/**
+ * Cleans and sanitizes text content to optimize for AI analysis.
+ * Removes excessive whitespace, special characters, URLs, and platform-specific formatting.
+ * Also truncates the text to a reasonable length to conserve tokens.
+ * @param {string} text - The input text to sanitize.
+ * @returns {string} The sanitized text.
+ */
 function sanitizeText(text) {
     if (!text) return "";
 
@@ -218,7 +250,20 @@ function sanitizeText(text) {
         .substring(0, 2000); // Limit to 2000 chars per post/comment
 }
 
-// ---- Per-post prompt builder ----
+/**
+ * Constructs the prompt for analyzing a single post with the OpenAI API.
+ * It combines the post title, content, and comments into a structured prompt
+ * for the AI to extract specific insights.
+ * @param {object} postObj - The post object containing details like title, content, and comments.
+ * @param {string} [postObj.topic] - The topic of the post.
+ * @param {string} [postObj.platform] - The platform the post is from.
+ * @param {object} [postObj.post] - The main post content.
+ * @param {string} [postObj.post.url] - The URL of the post.
+ * @param {string} [postObj.post.title] - The title of the post.
+ * @param {string} [postObj.post.content] - The body content of the post.
+ * @param {Array<object>} [postObj.comments] - An array of comments on the post.
+ * @returns {{system: string, user: string}} An object containing the system and user prompts for the AI.
+ */
 function buildPerPostPrompt(postObj) {
     console.log('=== buildPerPostPrompt Debug ===');
     console.log('Post object structure:', JSON.stringify(postObj, null, 2));
@@ -277,7 +322,11 @@ Do not return empty arrays unless there truly are no examples.`,
     };
 }
 
-// ---- Pitch Generation ----
+/**
+ * Generates concise solution pitches based on selected insights using the OpenAI API.
+ * @param {Array<object>} selectedItems - An array of selected insight items (ideas, issues, etc.).
+ * @returns {Promise<Array<object>>} A promise that resolves to an array of generated pitches, each with a pitch and reasoning.
+ */
 async function generatePitches(selectedItems) {
     const system = `You are a product strategist. Based ONLY on the SELECTED items below, generate 5 ultra-concise solution pitches.
 
@@ -320,7 +369,12 @@ ${JSON.stringify(selectedItems, null, 2)}`;
     return result.pitches;
 }
 
-// ---- Final Builder ----
+/**
+ * Generates a detailed final plan including a tech stack, user persona, and PRD based on a chosen pitch and evidence.
+ * @param {string} chosenPitch - The selected elevator pitch to build the plan around.
+ * @param {Array<object>} selectedItems - The evidence (insights) supporting the pitch.
+ * @returns {Promise<object>} A promise that resolves to a comprehensive final plan object.
+ */
 async function generateFinalPlan(chosenPitch, selectedItems) {
     const system = `You are a senior product engineer. Based ONLY on the chosen pitch and the SELECTED evidence below:
 1) Propose a fast, pragmatic tech stack that a single dev can ship in 1 day.
@@ -471,7 +525,12 @@ Return JSON exactly matching the provided schema.`;
     return result;
 }
 
-// ---- Search Query Generation ----
+/**
+ * Orchestrates the generation of search queries, executes them on Google, and stores the results.
+ * @param {string} topic - The central topic for which to generate search queries.
+ * @param {Array<string>} sources - A list of platforms to target (e.g., 'reddit', 'github').
+ * @returns {Promise<{queries: Array<object>, results: Array<object>, session: object}>} A promise that resolves to an object containing the generated queries, search results, and session information.
+ */
 async function generateSearchQueries(topic, sources) {
     try {
         const queries = await buildQueries({ topic, sources });
@@ -504,7 +563,12 @@ async function generateSearchQueries(topic, sources) {
     }
 }
 
-// Execute Google searches for generated queries with multi-page support
+/**
+ * Executes a series of Google searches based on the provided queries.
+ * It opens tabs in the background, extracts results from multiple pages, and closes the tabs.
+ * @param {Array<object>} queries - An array of query objects to execute.
+ * @returns {Promise<Array<object>>} A promise that resolves to an array of search result objects.
+ */
 async function executeGoogleSearches(queries) {
     const results = [];
     const maxPagesPerQuery = 3; // Extract from up to 3 pages per query
@@ -595,6 +659,11 @@ async function executeGoogleSearches(queries) {
     return results;
 }
 
+/**
+ * Gets the user-friendly display name for a given platform source key.
+ * @param {string} source - The platform key (e.g., 'stackoverflow').
+ * @returns {string} The display name (e.g., 'Stack Overflow').
+ */
 function getPlatformDisplayName(source) {
     const names = {
         'reddit': 'Reddit',
@@ -610,7 +679,16 @@ function getPlatformDisplayName(source) {
     return names[source] || source;
 }
 
-// ---- Message handling ----
+/**
+ * Main message listener for the extension.
+ * Routes messages from other parts of the extension (UI, content scripts) to the appropriate handlers.
+ * This is the central hub for all extension communication.
+ * @param {object} request - The message object.
+ * @param {string} request.type - The type of action to perform.
+ * @param {object} sender - Information about the sender of the message.
+ * @param {function} sendResponse - Function to call to send a response.
+ * @returns {boolean} - Returns true to indicate that the response will be sent asynchronously.
+ */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
         try {
@@ -698,7 +776,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
-// ---- Data Extraction Functions ----
+/**
+ * Handles the initial request to start the data extraction process.
+ * Sets up the extraction state and initiates the process.
+ * @param {object} request - The message request object from the content script or UI.
+ * @param {Array<string>} request.urls - The URLs to extract data from.
+ * @param {boolean} request.closeTabs - Whether to close tabs after extraction.
+ * @param {boolean} request.extractComments - Whether to extract comments.
+ * @param {boolean} request.extractMetadata - Whether to extract metadata.
+ * @param {function} sendResponse - The function to call to send a response.
+ */
 async function handleDataExtraction(request, sendResponse) {
     try {
         const { urls, closeTabs, extractComments, extractMetadata } = request;
@@ -731,7 +818,13 @@ async function handleDataExtraction(request, sendResponse) {
     }
 }
 
-// Read CSV file content
+/**
+ * Reads the content of a CSV file from the browser's downloads.
+ * Note: This is a placeholder and does not actually read file content due to security restrictions.
+ * It confirms the file's existence.
+ * @param {string} filename - The name of the file to look for in the downloads.
+ * @returns {Promise<object>} A promise that resolves with a placeholder object if the file exists.
+ */
 async function readCSVFile(filename) {
     return new Promise((resolve, reject) => {
         chrome.downloads.search({ filename: filename }, (downloads) => {
@@ -744,7 +837,13 @@ async function readCSVFile(filename) {
     });
 }
 
-// Extract Reddit URLs from CSV content
+/**
+ * Extracts Reddit URLs from CSV content.
+ * Note: This is a placeholder function that returns example URLs if a placeholder object is passed.
+ * In a real scenario, it would parse CSV content to find URLs.
+ * @param {string|object} csvContent - The CSV file content as a string, or a placeholder object.
+ * @returns {Array<string>} An array of Reddit URLs.
+ */
 function extractRedditUrlsFromCSV(csvContent) {
     if (csvContent && csvContent.placeholder) {
         return [
@@ -774,7 +873,15 @@ function extractRedditUrlsFromCSV(csvContent) {
     return redditUrls;
 }
 
-// Start data extraction process
+/**
+ * Manages the core data extraction loop, iterating through URLs and dispatching extraction tasks.
+ * It opens tabs, injects content scripts, and handles success or failure for each URL.
+ * It also manages the extraction state, including progress and stopping conditions.
+ * @param {Array<string>} urls - The list of URLs to extract data from.
+ * @param {boolean} closeTabs - Whether to close tabs after extraction.
+ * @param {boolean} extractComments - Whether to extract comments/replies.
+ * @param {boolean} extractMetadata - Whether to extract additional metadata.
+ */
 async function startDataExtractionProcess(urls, closeTabs, extractComments, extractMetadata) {
     let currentTab = null;
 
@@ -1080,7 +1187,11 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
     }
 }
 
-// Helper function to determine platform from URL
+/**
+ * Determines the platform name from a given URL.
+ * @param {string} url - The URL to analyze.
+ * @returns {string} The platform name (e.g., 'reddit', 'github') or 'unknown'.
+ */
 function getPlatformFromUrl(url) {
     if (url.includes('reddit.com')) return 'reddit';
     if (url.includes('stackoverflow.com')) return 'stackoverflow';
@@ -1090,7 +1201,11 @@ function getPlatformFromUrl(url) {
     return 'unknown';
 }
 
-// Save extracted data as JSON
+/**
+ * Saves the extracted data to a versioned run in local storage.
+ * @param {object|Array} data - The data to save. Can be an array of items or a run object.
+ * @param {boolean} [isStopped=false] - Whether the extraction was stopped prematurely.
+ */
 async function saveDataAsJSON(data, isStopped = false) {
     // Use the new storage system for versioned saves
     const run = {
@@ -1107,12 +1222,19 @@ async function saveDataAsJSON(data, isStopped = false) {
     await recordExtractionRun(run);
 }
 
-// Handle extracted Reddit data
+/**
+ * Placeholder function to handle successfully extracted Reddit data. Currently just logs the data.
+ * @param {object} request - The message request object containing the extracted data.
+ */
 function handleRedditDataExtracted(request) {
     console.log('Reddit data extracted:', request.data);
 }
 
-// Handle stop and save request
+/**
+ * Handles the request to stop an ongoing data extraction process and save the progress.
+ * Updates the extraction state and saves any data collected so far.
+ * @param {function} sendResponse - The function to call to send a response.
+ */
 async function handleStopAndSave(sendResponse) {
     try {
         const currentState = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
@@ -1204,7 +1326,9 @@ async function handleStopAndSave(sendResponse) {
     }
 }
 
-// Context menu for easy access
+/**
+ * Creates a context menu item for easy access to search result extraction on Google search pages.
+ */
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
         id: 'extractResults',
@@ -1214,6 +1338,10 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+/**
+ * Handles clicks on the context menu item.
+ * Sends a message to the content script of the active tab to initiate extraction.
+ */
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === 'extractResults') {
         // Send message to content script to extract results

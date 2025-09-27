@@ -1,4 +1,9 @@
-// AI Analysis Results Page JavaScript
+/**
+ * @file ai_analysis.js
+ * @description This script handles the functionality of the full-screen AI analysis results page (ai_analysis.html).
+ * It loads the analysis data from `chrome.storage.local`, populates the statistics and content sections,
+ * and manages user interactions like exporting data.
+ */
 document.addEventListener('DOMContentLoaded', function () {
     const loadingSection = document.getElementById('loadingSection');
     const errorSection = document.getElementById('errorSection');
@@ -25,9 +30,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportSummary = document.getElementById('exportSummary');
     const shareResults = document.getElementById('shareResults');
 
-    // Initialize the page
-    initializePage();
-
+    /**
+     * Initializes the analysis page. It attempts to load data from local storage,
+     * handling cases where data is from a file upload or from a regular analysis run.
+     * It then calls the appropriate functions to display the data or show an error/no-data message.
+     */
     async function initializePage() {
         try {
             showLoading();
@@ -80,6 +87,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * Shows the loading spinner and hides other sections.
+     */
     function showLoading() {
         loadingSection.style.display = 'block';
         errorSection.style.display = 'none';
@@ -87,10 +97,17 @@ document.addEventListener('DOMContentLoaded', function () {
         analysisContent.style.display = 'none';
     }
 
+    /**
+     * Hides the loading spinner.
+     */
     function hideLoading() {
         loadingSection.style.display = 'none';
     }
 
+    /**
+     * Displays an error message.
+     * @param {string} message - The error message to display.
+     */
     function showError(message) {
         errorMessage.textContent = message;
         loadingSection.style.display = 'none';
@@ -99,6 +116,9 @@ document.addEventListener('DOMContentLoaded', function () {
         analysisContent.style.display = 'none';
     }
 
+    /**
+     * Displays the "No Data" message.
+     */
     function showNoData() {
         loadingSection.style.display = 'none';
         errorSection.style.display = 'none';
@@ -106,6 +126,9 @@ document.addEventListener('DOMContentLoaded', function () {
         analysisContent.style.display = 'none';
     }
 
+    /**
+     * Shows the main content section.
+     */
     function showContent() {
         loadingSection.style.display = 'none';
         errorSection.style.display = 'none';
@@ -113,6 +136,11 @@ document.addEventListener('DOMContentLoaded', function () {
         analysisContent.style.display = 'block';
     }
 
+    /**
+     * Populates the entire page with the provided analysis results.
+     * @param {Array<object>} perPostAnalysis - The array of per-post analysis results.
+     * @param {object} aggregatedAnalysis - The aggregated analysis results.
+     */
     function displayAnalysisResults(perPostAnalysis, aggregatedAnalysis) {
         // Update statistics
         updateStatistics(perPostAnalysis, aggregatedAnalysis);
@@ -133,6 +161,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * Updates the statistics section of the page.
+     * @param {Array<object>} perPostAnalysis - The array of per-post analysis results.
+     * @param {object} aggregatedAnalysis - The aggregated analysis results.
+     */
     function updateStatistics(perPostAnalysis, aggregatedAnalysis) {
         // Total posts analyzed
         totalPosts.textContent = perPostAnalysis.length;
@@ -157,6 +190,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /**
+     * Populates the "Top Requested Tools" list.
+     * @param {Array<string>} tools - An array of tool names.
+     */
     function updateTopTools(tools) {
         topToolsList.innerHTML = '';
 
@@ -176,6 +213,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Populates the "MVP Recommendations" list.
+     * @param {Array<string>} mvpRecs - An array of MVP recommendation strings.
+     */
     function updateMVPRecommendations(mvpRecs) {
         mvpList.innerHTML = '';
 
@@ -195,6 +236,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Populates the "Common Issues" list.
+     * @param {Array<string>} issues - An array of common issue strings.
+     */
     function updateCommonIssues(issues) {
         issuesList.innerHTML = '';
 
@@ -214,6 +259,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Populates the "Praised Features" list.
+     * @param {Array<string>} pros - An array of praised feature strings.
+     */
     function updatePraisedFeatures(pros) {
         prosList.innerHTML = '';
 
@@ -233,6 +282,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Populates the "Action Plan" section.
+     * @param {string} actionPlan - The action plan string, which may contain steps.
+     */
     function updateActionPlan(actionPlan) {
         actionPlanSteps.innerHTML = '';
 
@@ -272,7 +325,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Export functionality
+    /**
+     * Handles the click event for the "Export JSON" button.
+     * It retrieves the full analysis data and triggers a download.
+     */
     exportJSON.addEventListener('click', async () => {
         try {
             const { per_post_analysis, aggregated_analysis } = await chrome.storage.local.get([
@@ -303,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
             a.href = url;
             a.download = `ai_analysis_detailed_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
-            a.click();
+a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
@@ -313,11 +369,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+     * Handles the click event for the "Export Summary" button.
+     * Currently, it shows an alert as PDF generation is a future feature.
+     */
     exportSummary.addEventListener('click', () => {
         // For now, just show an alert. In a real implementation, you'd use a PDF library
         alert('PDF export feature coming soon! For now, you can use the browser\'s print function (Ctrl+P) to save as PDF.');
     });
 
+    /**
+     * Handles the click event for the "Share Results" button.
+     * It creates a text summary of the results and copies it to the clipboard.
+     */
     shareResults.addEventListener('click', async () => {
         try {
             const { aggregated_analysis } = await chrome.storage.local.get(['aggregated_analysis']);
@@ -340,11 +404,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+     * Creates a concise, shareable text summary of the analysis results.
+     * @param {object} analysis - The aggregated analysis data.
+     * @returns {string} The formatted summary string.
+     */
     function createShareableSummary(analysis) {
         const topTools = (analysis.top_requested_tools || []).slice(0, 5);
         const mvpRecs = (analysis.mvp_recommendations || []).slice(0, 3);
 
-        return `🤖 AI Analysis Results - Reddit AI Demand Miner
+        return `🤖 AI Analysis Results - InsightMiner
 
 🎯 Top Requested Tools:
 ${topTools.map((tool, i) => `${i + 1}. ${tool}`).join('\n')}
@@ -355,11 +424,14 @@ ${mvpRecs.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
 📋 Action Plan:
 ${analysis.short_action_plan || 'No action plan available'}
 
-Generated by AI Demand Intelligence Miner Chrome Extension
+Generated by InsightMiner Chrome Extension
 #AI #ProductResearch #MultiPlatformAnalysis`;
     }
 
-    // Listen for storage changes to update the page in real-time
+    /**
+     * Listens for changes in `chrome.storage.local` and re-initializes the page
+     * if the analysis data is updated, allowing for real-time updates.
+     */
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local') {
             if (changes.aggregated_analysis || changes.per_post_analysis) {
@@ -370,4 +442,7 @@ Generated by AI Demand Intelligence Miner Chrome Extension
             }
         }
     });
+
+    // Initial call to load the page data.
+    initializePage();
 });
