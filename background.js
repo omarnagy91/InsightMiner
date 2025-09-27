@@ -169,10 +169,12 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 /**
- * Displays a Chrome notification to the user.
- * @param {string} title - The title of the notification.
- * @param {string} message - The main message content of the notification.
- * @param {string} [type='basic'] - The type of notification (e.g., 'basic', 'list').
+ * Displays a Chrome notification to the user with the specified title, message, and type.
+ * 
+ * @param {string} title - The title of the notification
+ * @param {string} message - The message content of the notification
+ * @param {string} [type='basic'] - The type of notification ('basic', 'image', 'list', 'progress')
+ * @returns {void}
  */
 function showNotification(title, message, type = 'basic') {
     chrome.notifications.create({
@@ -222,11 +224,12 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
 });
 
 /**
- * Cleans and sanitizes text content to optimize for AI analysis.
- * Removes excessive whitespace, special characters, URLs, and platform-specific formatting.
- * Also truncates the text to a reasonable length to conserve tokens.
- * @param {string} text - The input text to sanitize.
- * @returns {string} The sanitized text.
+ * Sanitizes and cleans text content for AI analysis by removing excessive whitespace,
+ * special characters, URLs, and platform-specific formatting, then truncates to a
+ * reasonable length for API processing.
+ * 
+ * @param {string} text - The raw text content to sanitize
+ * @returns {string} The sanitized and truncated text content
  */
 function sanitizeText(text) {
     if (!text) return "";
@@ -324,8 +327,11 @@ Do not return empty arrays unless there truly are no examples.`,
 
 /**
  * Generates concise solution pitches based on selected insights using the OpenAI API.
- * @param {Array<object>} selectedItems - An array of selected insight items (ideas, issues, etc.).
- * @returns {Promise<Array<object>>} A promise that resolves to an array of generated pitches, each with a pitch and reasoning.
+ * Creates multiple pitch options that address the most important user needs and pain points
+ * identified in the analysis, adhering to specific formatting and length constraints.
+ * 
+ * @param {Array<object>} selectedItems - Array of selected insight items from the analysis
+ * @returns {Promise<Array<object>>} Promise that resolves to an array of generated pitches with pitch and reasoning
  */
 async function generatePitches(selectedItems) {
     const system = `You are a product strategist. Based ONLY on the SELECTED items below, generate 5 ultra-concise solution pitches.
@@ -370,10 +376,13 @@ ${JSON.stringify(selectedItems, null, 2)}`;
 }
 
 /**
- * Generates a detailed final plan including a tech stack, user persona, and PRD based on a chosen pitch and evidence.
- * @param {string} chosenPitch - The selected elevator pitch to build the plan around.
- * @param {Array<object>} selectedItems - The evidence (insights) supporting the pitch.
- * @returns {Promise<object>} A promise that resolves to a comprehensive final plan object.
+ * Generates a detailed final plan (tech stack, user persona, PRD) based on a chosen pitch
+ * and supporting evidence using the OpenAI API. Creates a comprehensive MVP plan that
+ * includes technical specifications, user research, and implementation details.
+ * 
+ * @param {string} chosenPitch - The selected pitch to base the plan on
+ * @param {Array<object>} selectedItems - Array of supporting insight items for the plan
+ * @returns {Promise<object>} Promise that resolves to a comprehensive final plan object
  */
 async function generateFinalPlan(chosenPitch, selectedItems) {
     const system = `You are a senior product engineer. Based ONLY on the chosen pitch and the SELECTED evidence below:
@@ -527,9 +536,12 @@ Return JSON exactly matching the provided schema.`;
 
 /**
  * Orchestrates the generation of search queries, executes them on Google, and stores the results.
- * @param {string} topic - The central topic for which to generate search queries.
- * @param {Array<string>} sources - A list of platforms to target (e.g., 'reddit', 'github').
- * @returns {Promise<{queries: Array<object>, results: Array<object>, session: object}>} A promise that resolves to an object containing the generated queries, search results, and session information.
+ * This function coordinates the entire search process including query generation, execution,
+ * and result storage for later data extraction.
+ * 
+ * @param {string} topic - The topic to generate search queries for
+ * @param {Array<string>} sources - Array of platform sources to target (e.g., ['reddit', 'github'])
+ * @returns {Promise<{queries: Array<object>, results: Array<object>, session: object}>} Promise that resolves to an object containing queries, results, and session info
  */
 async function generateSearchQueries(topic, sources) {
     try {
@@ -564,10 +576,11 @@ async function generateSearchQueries(topic, sources) {
 }
 
 /**
- * Executes a series of Google searches based on the provided queries.
- * It opens tabs in the background, extracts results from multiple pages, and closes the tabs.
- * @param {Array<object>} queries - An array of query objects to execute.
- * @returns {Promise<Array<object>>} A promise that resolves to an array of search result objects.
+ * Executes a series of Google searches, opening tabs, extracting results from multiple pages,
+ * and closing tabs. Includes progress updates and notifications for the user.
+ * 
+ * @param {Array<object>} queries - Array of query objects to execute
+ * @returns {Promise<Array<object>>} Promise that resolves to an array of extracted search results
  */
 async function executeGoogleSearches(queries) {
     const results = [];
@@ -660,9 +673,10 @@ async function executeGoogleSearches(queries) {
 }
 
 /**
- * Gets the user-friendly display name for a given platform source key.
- * @param {string} source - The platform key (e.g., 'stackoverflow').
- * @returns {string} The display name (e.g., 'Stack Overflow').
+ * Returns a user-friendly display name for a given platform key.
+ * 
+ * @param {string} source - The platform key (e.g., 'reddit', 'github')
+ * @returns {string} The human-readable display name for the platform
  */
 function getPlatformDisplayName(source) {
     const names = {
