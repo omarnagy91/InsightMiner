@@ -1,9 +1,9 @@
 /*
  * OpenAI client utilities for AI Demand Intelligence Miner
- * Handles Responses API calls, structured outputs, retries, and validation
+ * Handles Chat Completions API calls, structured outputs, retries, and validation
  */
 
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/responses";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 4000;
@@ -28,7 +28,7 @@ async function getApiKey() {
     });
 }
 
-async function getModel(defaultModel = "gpt-4.1-mini") {
+async function getModel(defaultModel = "gpt-4o-mini") {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['AI_MODEL'], (result) => {
             if (chrome.runtime.lastError) {
@@ -61,21 +61,16 @@ async function callOpenAI({
     const body = {
         model: resolvedModel,
         temperature,
-        input: [
+        messages: [
             {
                 role: "system",
-                content: [
-                    { type: "text", text: system }
-                ]
+                content: system
             },
             {
                 role: "user",
-                content: [
-                    { type: "text", text: user }
-                ]
+                content: user
             }
-        ],
-        metadata
+        ]
     };
 
     if (schema) {
@@ -116,11 +111,7 @@ async function callOpenAI({
             }
 
             const data = await response.json();
-            let text = data?.output?.[0]?.content?.[0]?.text;
-            if (!text && Array.isArray(data?.output)) {
-                text = data.output.map(part => part?.content?.map(chunk => chunk?.text || "").join(""))
-                    .join("\n");
-            }
+            let text = data?.choices?.[0]?.message?.content;
 
             if (!text) {
                 throw new Error("OpenAI response missing text content");

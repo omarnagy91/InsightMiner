@@ -31,7 +31,7 @@ export const STORAGE_KEYS = {
     searchResults: 'searchResults',
     generatedQueries: 'generatedQueries',
     searchSessions: 'searchSessions',
-    extractionState: 'dataExtraction',
+    extractionState: 'extractionState',
     extractionRuns: 'extractionRuns',
     analysisState: 'aiAnalysis',
     analysisRuns: 'analysisRuns',

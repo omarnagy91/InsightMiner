@@ -205,6 +205,32 @@ document.addEventListener('DOMContentLoaded', function () {
         exportSearchResults.addEventListener('click', exportSearchResultsToCSV);
         startExtraction.addEventListener('click', startExtractionProcess);
         stopExtraction.addEventListener('click', stopExtractionProcess);
+
+        // Add periodic refresh to check extraction status (only when extraction is running)
+        let refreshInterval = null;
+
+        // Start periodic refresh only when needed
+        function startPeriodicRefresh() {
+            if (!refreshInterval) {
+                refreshInterval = setInterval(async () => {
+                    const { extractionState } = await chrome.storage.local.get(['extractionState']);
+                    if (!extractionState || !extractionState.isRunning) {
+                        // Stop refresh when extraction is not running
+                        clearInterval(refreshInterval);
+                        refreshInterval = null;
+                        return;
+                    }
+                    refreshExtractionStatus();
+                }, 3000); // Check every 3 seconds
+            }
+        }
+
+        // Listen for extraction start to begin periodic refresh
+        chrome.storage.onChanged.addListener((changes, namespace) => {
+            if (changes.extractionState && changes.extractionState.newValue?.isRunning) {
+                startPeriodicRefresh();
+            }
+        });
     }
 
     // AI mode setup
@@ -260,11 +286,19 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show export button if we have search results
             if (stored.searchResults && stored.searchResults.length > 0) {
                 exportSearchResults.style.display = 'block';
+
+                // Automatically set up extraction mode with stored search results
+                setupExtractionWithStoredResults(stored.searchResults);
             }
 
             // Show failed URLs if any
             if (stored.failedUrls && stored.failedUrls.length > 0) {
                 showFailedUrlsNotification(stored.failedUrls.length);
+            }
+
+            // Set up AI Analysis mode with extracted data if available
+            if (stored.extractionState?.extractedData && stored.extractionState.extractedData.length > 0) {
+                setupAIAnalysisWithExtractedData(stored.extractionState.extractedData);
             }
 
             // Check for ongoing Google search progress
@@ -367,14 +401,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Update extraction status display
     function updateExtractionStatus(extraction) {
+        console.log('updateExtractionStatus called with:', extraction);
+
         if (extraction.isRunning) {
+            console.log('Setting status to Running');
             extractionStatusSpan.textContent = 'Running';
             showProgressTracking(extraction);
         } else if (extraction.completed) {
+            console.log('Setting status to Completed');
             extractionStatusSpan.textContent = 'Completed';
         } else if (extraction.stopped) {
+            console.log('Setting status to Stopped');
             extractionStatusSpan.textContent = 'Stopped';
         } else {
+            console.log('Setting status to Ready');
             extractionStatusSpan.textContent = 'Ready';
         }
     }
@@ -498,6 +538,107 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             showExtractionStatus('Please select a valid CSV file', 'error');
         }
+    }
+
+    // Set up extraction mode with stored search results
+    function setupExtractionWithStoredResults(searchResults) {
+        if (!searchResults || searchResults.length === 0) {
+            return;
+        }
+
+        // Extract URLs from search results
+        const urls = searchResults.map(result => result.url).filter(Boolean);
+
+        if (urls.length > 0) {
+            // Store the URLs for extraction
+            window.selectedUrls = urls;
+
+            // Update the UI to show that we have URLs ready for extraction
+            updateExtractionUIWithStoredResults(urls, searchResults);
+
+            console.log(`Set up extraction with ${urls.length} URLs from stored search results`);
+        }
+    }
+
+    // Flag to prevent repeated AI Analysis setup
+    let aiAnalysisSetupComplete = false;
+
+    // Set up AI Analysis mode with extracted data
+    function setupAIAnalysisWithExtractedData(extractedData) {
+        if (!extractedData || extractedData.length === 0 || aiAnalysisSetupComplete) {
+            return;
+        }
+
+        // Set the data source to extracted data
+        const extractedRadio = document.querySelector('input[name="dataSource"][value="extracted"]');
+        if (extractedRadio) {
+            extractedRadio.checked = true;
+        }
+
+        // Show success message
+        showAIStatus(`Ready to analyze ${extractedData.length} extracted items`, 'success');
+
+        // Mark as complete to prevent repeated setup
+        aiAnalysisSetupComplete = true;
+
+        console.log(`Set up AI Analysis with ${extractedData.length} extracted items`);
+    }
+
+    // Manual refresh function to check extraction status
+    async function refreshExtractionStatus() {
+        try {
+            const { extractionState } = await chrome.storage.local.get(['extractionState']);
+            console.log('Manual refresh - extraction state:', extractionState);
+
+            if (extractionState) {
+                updateExtractionStatus(extractionState);
+
+                if (extractionState.completed && extractionState.extractedData && extractionState.extractedData.length > 0) {
+                    console.log('Manual refresh - setting up AI Analysis');
+                    setupAIAnalysisWithExtractedData(extractionState.extractedData);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing extraction status:', error);
+        }
+    }
+
+    // Update extraction UI to show stored results
+    function updateExtractionUIWithStoredResults(urls, searchResults) {
+        // Update total URLs count
+        totalUrls.textContent = urls.length;
+
+        // Show file info with stored results
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const urlCount = document.getElementById('urlCount');
+        const sourceBreakdown = document.getElementById('sourceBreakdown');
+
+        fileName.textContent = 'Stored Search Results';
+        urlCount.textContent = urls.length;
+
+        // Calculate source breakdown
+        const platformCounts = {};
+        searchResults.forEach(result => {
+            const platform = result.platform || 'unknown';
+            platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+        });
+
+        const breakdownHtml = Object.entries(platformCounts)
+            .map(([platform, count]) => `<span class="platform-tag">${platform}: ${count}</span>`)
+            .join(' ');
+
+        sourceBreakdown.innerHTML = breakdownHtml;
+        fileInfo.style.display = 'block';
+
+        // Show auto-load message
+        const autoLoadMessage = document.getElementById('autoLoadMessage');
+        if (autoLoadMessage) {
+            autoLoadMessage.style.display = 'block';
+        }
+
+        // Show success message
+        showExtractionStatus(`Ready to extract from ${urls.length} URLs found in search results`, 'success');
     }
 
     // Extract URLs from CSV content
@@ -654,9 +795,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Update AI status display
     function updateAIStatus(analysis, perPostResults, aggregateResults) {
-        itemsAnalyzed.textContent = perPostResults.length;
+        // Handle undefined perPostResults
+        const resultsCount = perPostResults ? perPostResults.length : 0;
+        itemsAnalyzed.textContent = resultsCount;
 
-        if (analysis.isRunning) {
+        if (analysis && analysis.isRunning) {
             analysisStatus.textContent = 'Running';
             showAIAnalysisProgress(analysis);
         } else if (aggregateResults) {
@@ -784,6 +927,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Start AI analysis process
     async function startAIAnalysisProcess() {
         try {
+            // Reset the AI Analysis setup flag for new analysis
+            aiAnalysisSetupComplete = false;
+
             // Check if API key is set
             const { OPENAI_API_KEY } = await chrome.storage.local.get(['OPENAI_API_KEY']);
             if (!OPENAI_API_KEY) {
@@ -796,13 +942,13 @@ document.addEventListener('DOMContentLoaded', function () {
             let itemsToAnalyze = [];
 
             if (selectedSource === 'extracted') {
-                // Get extracted data
-                const { dataExtraction } = await chrome.storage.local.get(['dataExtraction']);
-                if (!dataExtraction.extractedData || dataExtraction.extractedData.length === 0) {
+                // Get extracted data from new storage system
+                const { extractionState } = await chrome.storage.local.get(['extractionState']);
+                if (!extractionState?.extractedData || extractionState.extractedData.length === 0) {
                     showAIStatus('No extracted data found. Please extract data first or select a JSON file.', 'error');
                     return;
                 }
-                itemsToAnalyze = dataExtraction.extractedData;
+                itemsToAnalyze = extractionState.extractedData;
             } else if (selectedSource === 'file') {
                 // Use uploaded JSON file
                 if (!window.selectedJSONData) {
@@ -842,7 +988,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (response.ok) {
                 showAIStatus('AI analysis completed successfully!', 'success');
-                updateAIStatus({ isRunning: false }, response.perPost, response.aggregate);
+                updateAIStatus({ isRunning: false }, response.perPost || [], response.aggregate || null);
                 viewResults.style.display = 'block';
                 openReportUI.style.display = 'block';
                 exportAnalysis.style.display = 'block';
@@ -1254,6 +1400,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Show export button if we have results
                 if (results.length > 0) {
                     exportSearchResults.style.display = 'block';
+
+                    // Automatically set up extraction mode with new search results
+                    setupExtractionWithStoredResults(results);
                 }
 
                 // Hide Google search progress when completed
@@ -1269,14 +1418,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (changes.extractionState) {
                 const extraction = changes.extractionState.newValue;
+                console.log('Extraction state changed:', extraction);
                 updateExtractionStatus(extraction);
 
                 if (extraction.isRunning) {
+                    console.log('Extraction is running, updating progress');
                     updateProgress(extraction);
                 } else if (extraction.completed) {
+                    console.log('Extraction completed, updating UI');
                     showExtractionStatus('Data extraction completed!', 'success');
                     hideProgressTracking();
+
+                    // Automatically set up AI Analysis mode with extracted data
+                    if (extraction.extractedData && extraction.extractedData.length > 0) {
+                        console.log('Setting up AI Analysis with', extraction.extractedData.length, 'items');
+                        setupAIAnalysisWithExtractedData(extraction.extractedData);
+                    }
                 } else if (extraction.stopped) {
+                    console.log('Extraction stopped');
                     hideProgressTracking();
                 }
             }
@@ -1293,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (changes.per_post_analysis || changes.aggregated_analysis) {
                 const perPost = changes.per_post_analysis ? changes.per_post_analysis.newValue : [];
                 const aggregate = changes.aggregated_analysis ? changes.aggregated_analysis.newValue : null;
-                updateAIStatus({ isRunning: false }, perPost, aggregate);
+                updateAIStatus({ isRunning: false }, perPost || [], aggregate || null);
             }
 
             if (changes.failedUrls) {
@@ -1525,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             showAIStatus('Continuing from last analysis...', 'success');
-            updateAIStatus({ isRunning: false }, [], aggregated_analysis);
+            updateAIStatus({ isRunning: false }, [], aggregated_analysis || null);
 
             // Show relevant buttons
             document.getElementById('regeneratePitches').style.display = 'block';

@@ -530,6 +530,9 @@ async function generateSearchQueries(topic, sources) {
         );
 
         const results = await executeGoogleSearches(queries);
+        console.log(`Total results collected: ${results.length}`);
+        console.log('Results sample:', results.slice(0, 2));
+
         await storeSearchResults(results);
         const session = await saveSearchSession({ topic, queries, results });
 
@@ -591,7 +594,10 @@ async function executeGoogleSearches(queries) {
                     }));
                     results.push(...decorated);
                     console.log(`Extracted ${extraction.results.length} results from page ${page + 1} of ${query.platform}`);
+                    console.log('Sample result:', decorated[0]);
                 } else {
+                    console.log(`No results found on page ${page + 1} for ${query.platform}`);
+                    console.log('Extraction response:', extraction);
                     console.log(`No results found on page ${page + 1} for ${query.platform}, stopping pagination`);
                     break; // Stop pagination if no results found
                 }
@@ -1089,6 +1095,19 @@ async function startDataExtractionProcess(urls, closeTabs, extractComments, extr
 
         await recordExtractionRun(run);
         await saveFailedUrlsReport();
+
+        // Update extraction state to mark as completed
+        await chrome.storage.local.set({
+            [STORAGE_KEYS.extractionState]: {
+                ...extractionState,
+                isRunning: false,
+                completed: true,
+                progress: urls.length,
+                total: urls.length,
+                currentTask: 'Completed',
+                endTime: new Date().toISOString()
+            }
+        });
 
         console.log(`Data extraction completed. Extracted ${run.extracted} items.`);
 

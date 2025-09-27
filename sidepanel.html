@@ -998,6 +998,19 @@
         .security-dismiss:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+
+        /* Platform Tags */
+        .platform-tag {
+            display: inline-block;
+            background: var(--success-gradient);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px 4px 2px 0;
+            text-transform: capitalize;
+        }
     </style>
 </head>
 <body>
@@ -1138,12 +1151,15 @@
             <div class="sidebar-section">
                 <h3>📊 Multi-Platform Data Extraction</h3>
                 <div class="csv-files">
-                    <h4 style="margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text-primary);">📁 Select CSV file with search results:</h4>
+                    <h4 style="margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text-primary);">📁 Data Source:</h4>
                     <input type="file" id="csvFileInput" accept=".csv" class="file-input">
                     <div class="file-info" id="fileInfo" style="display: none;">
-                        <p><strong>Selected file:</strong> <span id="fileName"></span></p>
+                        <p><strong>Source:</strong> <span id="fileName"></span></p>
                         <p><strong>Total URLs found:</strong> <span id="urlCount">0</span></p>
                         <div id="sourceBreakdown"></div>
+                    </div>
+                    <div id="autoLoadMessage" style="display: none; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 13px;">
+                        <strong>✅ Auto-loaded:</strong> Search results are ready for extraction. You can also upload a CSV file if needed.
                     </div>
                 </div>
                 <div class="options">

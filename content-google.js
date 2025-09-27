@@ -13,7 +13,11 @@
             '.yuRUbf', // Another result container
             '[data-ved]', // Results with data-ved attribute
             '.rc', // Classic result container
-            '.r' // Simple result container
+            '.r', // Simple result container
+            '.MjjYud', // New Google layout
+            '.hlcw0c', // Another new layout
+            '.g .yuRUbf', // Nested structure
+            '.g .tF2Cxc' // Nested structure
         ];
 
         let resultElements = [];
@@ -32,7 +36,9 @@
                 totalDivs: document.querySelectorAll('div').length,
                 hasSearchResults: !!document.querySelector('#search'),
                 hasMainContent: !!document.querySelector('#main'),
-                pageTitle: document.title
+                pageTitle: document.title,
+                pageUrl: window.location.href,
+                allSelectors: selectors.map(s => ({ selector: s, count: document.querySelectorAll(s).length }))
             });
             return results;
         }
@@ -105,6 +111,65 @@
 
         console.log(`Extracted ${results.length} valid results from ${resultElements.length} containers`);
         return results;
+    }
+
+    // Fallback extraction method for different Google layouts
+    function extractGoogleResultsFallback() {
+        const results = [];
+        console.log('Trying fallback extraction method...');
+
+        // Try to find any external links on the page
+        const allLinks = document.querySelectorAll('a[href]');
+        console.log(`Found ${allLinks.length} total links on page`);
+
+        allLinks.forEach((link, index) => {
+            try {
+                const url = link.href;
+                const title = link.textContent.trim() || link.title || 'No title';
+
+                // Skip Google internal links and common non-result links
+                if (url &&
+                    !url.includes('google.com') &&
+                    !url.includes('youtube.com/watch') &&
+                    !url.includes('maps.google.com') &&
+                    !url.includes('translate.google.com') &&
+                    !url.includes('accounts.google.com') &&
+                    url.startsWith('http') &&
+                    title.length > 3) {
+
+                    const domain = new URL(url).hostname;
+
+                    // Skip common non-result domains
+                    if (!domain.includes('google') &&
+                        !domain.includes('youtube') &&
+                        !domain.includes('facebook') &&
+                        !domain.includes('twitter') &&
+                        !domain.includes('instagram')) {
+
+                        results.push({
+                            title: title,
+                            url: url,
+                            snippet: '',
+                            domain: domain,
+                            position: results.length + 1,
+                            searchQuery: getCurrentSearchQuery(),
+                            timestamp: new Date().toISOString(),
+                            source: 'Google Search (Fallback)'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing fallback link:', error);
+            }
+        });
+
+        // Remove duplicates based on URL
+        const uniqueResults = results.filter((result, index, self) =>
+            index === self.findIndex(r => r.url === result.url)
+        );
+
+        console.log(`Fallback extraction found ${uniqueResults.length} unique results`);
+        return uniqueResults;
     }
 
     // Function to get current search query
@@ -203,11 +268,37 @@
         try {
             if (request.action === 'extract') {
                 console.log(`Google extraction requested for page ${request.page || 1}, query: ${request.searchQuery}`);
-                extractAndSave().then(() => {
-                    sendResponse({ success: true });
-                }).catch((error) => {
-                    sendResponse({ success: false, error: error.message });
-                });
+
+                // Wait a bit for dynamic content to load
+                setTimeout(async () => {
+                    try {
+                        const results = extractGoogleResults();
+                        console.log(`Extracted ${results.length} results from Google search`);
+
+                        if (results.length > 0) {
+                            await saveResultsToStorage(results);
+                            showExtractionNotification(results.length);
+                            sendResponse({ success: true, results: results });
+                        } else {
+                            console.log('No search results found with primary method, trying fallback...');
+
+                            // Try fallback extraction with different approach
+                            const fallbackResults = extractGoogleResultsFallback();
+                            if (fallbackResults.length > 0) {
+                                await saveResultsToStorage(fallbackResults);
+                                showExtractionNotification(fallbackResults.length);
+                                sendResponse({ success: true, results: fallbackResults });
+                            } else {
+                                console.log('No search results found with fallback method either');
+                                sendResponse({ success: true, results: [] });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error in extraction:', error);
+                        sendResponse({ success: false, error: error.message });
+                    }
+                }, 1000);
+
                 return true; // Keep message channel open for async response
             }
         } catch (error) {
