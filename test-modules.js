@@ -1,9 +1,16 @@
-/*
- * Simple test file to verify modular background script functionality
- * This can be run in the browser console to test individual modules
+/**
+ * @file test-modules.js
+ * @description This is a simple test script designed to be run in the browser console
+ * within the extension's background context. Its purpose is to verify that all the
+ * modular background script components can be loaded without throwing errors.
  */
 
 // Test imports (these would work in the background script context)
+/**
+ * @function testModules
+ * @description Asynchronously tests the loading of all background script modules.
+ * It logs success or failure messages to the console, acting as a basic sanity check.
+ */
 async function testModules() {
     console.log('Testing modular background script components...');
 

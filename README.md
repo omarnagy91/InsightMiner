@@ -211,26 +211,17 @@ The AI Analysis Tab provides a comprehensive, full-screen view of your multi-pla
 ## File Structure
 
 ```
-chrome-extractor/
-├── manifest.json          # Extension configuration with side panel setup
-├── background.js          # Background service worker with AI analysis pipeline
-├── content-google.js      # Google search results extraction
-├── content-reddit.js      # Reddit content extraction
-├── content-stackoverflow.js # Stack Overflow content extraction
-├── content-github.js      # GitHub content extraction
-├── content-devto.js       # Dev.to content extraction
-├── content-medium.js      # Medium content extraction
-├── popup.html             # Enhanced popup interface (fallback)
-├── popup.js               # Popup functionality
-├── sidepanel.html         # Modern three-mode sidebar interface
-├── sidepanel.js           # Enhanced sidebar with AI analysis
-├── ai_analysis.html       # Full-screen AI analysis results page
-├── ai_analysis.js         # AI analysis tab functionality
-├── options.html           # OpenAI API key management page
-├── options.js             # Options page functionality
-├── icons/                 # Extension icons (16px, 32px, 48px, 128px)
-├── README.md              # This file
-└── INSTALLATION.md        # Installation guide
+.
+├── manifest.json          # Extension configuration, permissions, and scripts
+├── background.js          # Main service worker, acts as a central controller
+├── background/            # Modules for handling specific background tasks (AI, search, scraping)
+├── content-*.js           # Content scripts for data extraction from different websites
+├── sidepanel.html / .js   # UI and logic for the main extension side panel
+├── ai_analysis.html / .js # UI and logic for the full-screen analysis report
+├── report_ui.html / .js   # UI and logic for the interactive insights report
+├── options.html / .js     # UI and logic for the extension's settings page
+├── icons/                 # Extension icons in various sizes
+└── README.md              # This file
 ```
 
 ## 📁 Export Formats
@@ -299,14 +290,478 @@ The extension requires the following permissions:
 - `sidePanel`: To display the fixed sidebar interface
 - Host permissions for `google.com`, `reddit.com`, `stackoverflow.com`, `github.com`, `dev.to`, `medium.com`, and `platform.openai.com`
 
-## Development
+## 👨‍💻 Development Guide
 
-To modify or extend the extension:
+This extension is built with vanilla HTML, CSS, and JavaScript using modern Chrome Extension Manifest V3 architecture. No external build tools or frameworks are required, making it easy to modify and extend.
 
-1. Make your changes to the relevant files
-2. Go to `chrome://extensions/`
-3. Click the refresh icon on the extension card
-4. Test your changes
+### 🏗️ Architecture Overview
+
+The extension follows a modular, event-driven architecture with clear separation of concerns:
+
+#### Core Components
+
+**Service Worker (`background.js` & `background/`)**
+- Central controller and state manager
+- Handles all external API communications (OpenAI)
+- Orchestrates cross-tab data extraction workflows
+- Manages message routing between extension components
+- Implements retry logic and error handling
+- Coordinates concurrent processing with rate limiting
+
+**Content Scripts (`content-*.js`)**
+- Platform-specific DOM scrapers injected into target websites
+- Extract structured data using CSS selectors and DOM traversal
+- Handle dynamic content loading and SPA navigation
+- Communicate extraction results back to service worker
+- Implement fallback extraction strategies
+
+**UI Components**
+- `sidepanel.js`: Main extension interface with three-mode design
+- `options.js`: Settings and configuration management
+- `ai_analysis.js`: Full-screen analysis results viewer
+- `report_ui.js`: Interactive insights report interface
+
+#### Modular Background Architecture
+
+The background script is organized into focused modules:
+
+- `background/constants.js`: Configuration constants and platform mappings
+- `background/openai.js`: OpenAI API client with structured outputs
+- `background/search.js`: Search query generation and session management
+- `background/scrape.js`: Data extraction utilities and content processing
+- `background/analyze.js`: AI analysis orchestration and demand scoring
+- `background/storage.js`: Versioned data persistence and file management
+- `background/sessions.js`: Session metadata and tracking
+- `background/dedupe.js`: Duplicate detection and evidence merging
+- `background/normalize.js`: Text normalization for consistent processing
+- `background/synonyms.js`: AI-powered synonym generation
+- `background/report.js`: Report generation and management
+
+### 🔄 Data Flow
+
+1. **Search Generation**: User input → AI query generation → Google search execution
+2. **Data Extraction**: URLs → Platform detection → Content script injection → Data extraction
+3. **AI Analysis**: Raw data → Per-post analysis → Aggregation → Demand scoring
+4. **Report Generation**: Analysis results → Interactive visualization → Export options
+
+### 💾 Storage Strategy
+
+- **Local Storage**: Chrome storage API for settings, session data, and results
+- **Versioned Runs**: Each extraction/analysis creates a timestamped run
+- **File Downloads**: Automatic CSV/JSON export with organized naming
+- **State Persistence**: Maintain UI state across browser sessions
+
+### 🔧 Development Setup
+
+1. **Clone Repository**
+   ```bash
+   git clone <repository-url>
+   cd chrome-extractor
+   ```
+
+2. **Load Extension**
+   - Open Chrome → `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked" → Select project folder
+
+3. **Development Workflow**
+   - Edit source files directly (no build step required)
+   - Reload extension in Chrome for service worker changes
+   - Refresh pages for content script changes
+   - UI changes reflect immediately
+
+### 🧪 Testing & Debugging
+
+#### Unit Tests
+- `test-background-modules.js`: Background module unit tests
+- `test-functionality.js`: Core functionality verification
+- `test-integration.js`: End-to-end workflow tests
+- `test-modules.js`: Module loading verification
+
+#### Running Tests
+```javascript
+// In browser console or Node.js
+const tests = new BackgroundModuleTests();
+tests.runAllTests();
+```
+
+#### Debugging Tools
+- **Service Worker**: `chrome://extensions/` → "Service Worker" link
+- **Side Panel**: Right-click panel → "Inspect"
+- **Content Scripts**: Target site DevTools → Sources → Content scripts
+- **Storage**: DevTools → Application → Storage → Extensions
+
+### 📝 Code Style & Conventions
+
+#### JSDoc Documentation
+All public functions include comprehensive JSDoc comments:
+```javascript
+/**
+ * Extracts search results from Google search pages using multiple CSS selectors.
+ * Handles various Google layouts and provides fallback extraction methods.
+ * 
+ * @param {string} searchQuery - The search query used to find results
+ * @param {boolean} includeFallback - Whether to use fallback extraction
+ * @returns {Promise<Array<object>>} Array of search result objects
+ */
+async function extractGoogleResults(searchQuery, includeFallback = true) {
+    // Implementation...
+}
+```
+
+#### Message Passing Patterns
+```javascript
+// Service Worker → Content Script
+chrome.tabs.sendMessage(tabId, { 
+    action: 'extractData',
+    options: { extractComments: true }
+});
+
+// Content Script → Service Worker
+chrome.runtime.sendMessage({
+    action: 'DATA_EXTRACTED',
+    data: extractedData
+});
+
+// UI → Service Worker
+chrome.runtime.sendMessage({
+    action: 'START_ANALYSIS',
+    payload: analysisConfig
+});
+```
+
+#### Error Handling
+```javascript
+// Consistent error handling with retry logic
+async function callWithRetry(fn, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            await delay(Math.pow(2, i) * 1000); // Exponential backoff
+        }
+    }
+}
+```
+
+### 🔌 API Integration
+
+#### OpenAI Integration
+```javascript
+// Structured API calls with schema validation
+const result = await callOpenAI({
+    messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ],
+    model: 'gpt-4o-mini',
+    response_format: { type: 'json_object' },
+    schema: PER_POST_SCHEMA, // JSON schema validation
+    temperature: 0.3
+});
+```
+
+#### Chrome APIs Used
+- `chrome.storage.local`: Data persistence
+- `chrome.tabs`: Tab management for extraction
+- `chrome.scripting`: Content script injection
+- `chrome.downloads`: File export functionality
+- `chrome.notifications`: User notifications
+- `chrome.sidePanel`: Persistent sidebar interface
+
+### 📁 Detailed File Structure
+
+```
+chrome-extractor/
+├── manifest.json                 # Extension configuration and permissions
+├── background.js                 # Main service worker (central controller)
+├── background/                   # Modular background script components
+│   ├── constants.js             # Configuration constants and mappings
+│   ├── openai.js               # OpenAI API client with structured outputs
+│   ├── search.js               # Search query generation and management
+│   ├── scrape.js               # Data extraction utilities
+│   ├── analyze.js              # AI analysis orchestration
+│   ├── storage.js              # Versioned data persistence
+│   ├── sessions.js             # Session metadata management
+│   ├── dedupe.js               # Duplicate detection and merging
+│   ├── normalize.js            # Text normalization utilities
+│   ├── synonyms.js             # AI-powered synonym generation
+│   └── report.js               # Report generation and management
+├── content-google.js            # Google search results extraction
+├── content-reddit.js           # Reddit posts and comments extraction
+├── content-stackoverflow.js    # Stack Overflow Q&A extraction
+├── content-github.js           # GitHub issues and discussions extraction
+├── content-devto.js            # Dev.to articles and comments extraction
+├── content-medium.js           # Medium articles and responses extraction
+├── sidepanel.html              # Main extension UI layout
+├── sidepanel.js                # Main extension UI logic and state management
+├── options.html                # Settings page layout
+├── options.js                  # Settings page logic and API key management
+├── ai_analysis.html            # Full-screen analysis results layout
+├── ai_analysis.js              # Analysis results viewer logic
+├── report_ui.html              # Interactive insights report layout
+├── report_ui.js                # Interactive report logic and visualization
+├── icons/                      # Extension icons (16px, 32px, 48px, 128px)
+├── test-background-modules.js  # Background module unit tests
+├── test-functionality.js       # Core functionality tests
+├── test-integration.js         # End-to-end workflow tests
+├── test-modules.js             # Module loading verification
+└── README.md                   # This comprehensive documentation
+```
+
+### 🚀 Getting Started for Developers
+
+#### First-Time Setup
+1. **Prerequisites**: Chrome browser with developer mode enabled
+2. **Clone and Load**: Follow the installation instructions above
+3. **Set up OpenAI API**: Get an API key from OpenAI for testing AI features
+4. **Explore the Code**: Start with `manifest.json` to understand permissions and entry points
+
+#### Key Entry Points
+- `background.js`: Main service worker - start here to understand the architecture
+- `sidepanel.js`: Main UI logic - understand user interactions and state management
+- `content-*.js`: Platform-specific scrapers - see how data extraction works
+- `background/`: Modular components - deep dive into specific functionality
+
+#### Development Workflow
+1. **Make Changes**: Edit source files directly (no build process)
+2. **Test Changes**: 
+   - Service worker changes: Reload extension in `chrome://extensions/`
+   - Content script changes: Refresh target web pages
+   - UI changes: Close and reopen extension panel
+3. **Debug**: Use Chrome DevTools as described in debugging section
+4. **Test**: Run unit tests and integration tests
+5. **Document**: Update JSDoc comments for any new functions
+
+#### Contributing Guidelines
+- **Code Style**: Follow existing JSDoc patterns and error handling conventions
+- **Testing**: Add tests for new functionality
+- **Documentation**: Update README.md for new features or breaking changes
+- **Modularity**: Keep background script modules focused and cohesive
+- **Error Handling**: Implement retry logic and user-friendly error messages
+
+### 🔧 Platform Extension Guide
+
+#### Adding a New Platform
+1. **Create Content Script**: `content-newplatform.js`
+   ```javascript
+   // Extract platform-specific data
+   function extractNewPlatformData(extractComments = true, extractMetadata = true) {
+       // Implementation for new platform
+   }
+   
+   // Message listener
+   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+       if (request.action === 'extractNewPlatformData') {
+           // Handle extraction request
+       }
+   });
+   ```
+
+2. **Update Manifest**: Add host permissions and content script registration
+   ```json
+   {
+       "host_permissions": ["https://newplatform.com/*"],
+       "content_scripts": [{
+           "matches": ["https://newplatform.com/*"],
+           "js": ["content-newplatform.js"]
+       }]
+   }
+   ```
+
+3. **Update Constants**: Add platform configuration
+   ```javascript
+   // In background/constants.js
+   PLATFORM_DORKS.newplatform = '(site:newplatform.com) "{topic}" ("{syn1}")';
+   PLATFORM_LABELS.newplatform = 'New Platform';
+   ```
+
+4. **Update Background Logic**: Add platform detection and handling
+   ```javascript
+   // In background.js
+   function getPlatformFromUrl(url) {
+       if (url.includes('newplatform.com')) return 'newplatform';
+       // ... existing platforms
+   }
+   ```
+
+### 🧪 Advanced Testing
+
+#### Performance Testing
+```javascript
+// Monitor extraction performance
+function logPerformance(operation, startTime) {
+    const duration = Date.now() - startTime;
+    console.log(`${operation} completed in ${duration}ms`);
+}
+
+// Usage
+const start = Date.now();
+await extractData();
+logPerformance('Data Extraction', start);
+```
+
+#### Load Testing
+```javascript
+// Test concurrent API calls
+async function testConcurrency() {
+    const promises = Array.from({ length: 10 }, () => 
+        callOpenAI({ /* test payload */ })
+    );
+    const results = await Promise.allSettled(promises);
+    console.log('Success rate:', results.filter(r => r.status === 'fulfilled').length / 10);
+}
+```
+
+#### Integration Testing
+```javascript
+// Test complete workflow
+async function testFullWorkflow() {
+    const topic = 'test topic';
+    const sources = ['reddit', 'github'];
+    
+    // 1. Generate queries
+    const { queries } = await generateSearchQueries(topic, sources);
+    
+    // 2. Extract data
+    const urls = queries.map(q => q.mockUrls).flat();
+    const extractedData = await startDataExtractionProcess(urls);
+    
+    // 3. Analyze with AI
+    const analysis = await analyzePosts({ posts: extractedData });
+    
+    console.log('Workflow test completed:', analysis);
+}
+```
+
+### 🔍 Debugging and Troubleshooting
+
+#### Service Worker Debugging
+```javascript
+// Add debug logging
+console.log('🔧 Service Worker Debug:', { timestamp: new Date().toISOString(), data });
+
+// Monitor message passing
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('📨 Message received:', message.action, message);
+    // Handle message...
+});
+
+// Track storage changes
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    console.log('💾 Storage changed:', changes);
+});
+```
+
+#### Content Script Debugging
+```javascript
+// Debug extraction on target pages
+function debugExtraction() {
+    console.log('🎯 Starting extraction debug on:', window.location.href);
+    console.log('🔍 Elements found:', document.querySelectorAll('.target-selector').length);
+    
+    // Test selectors
+    const elements = document.querySelectorAll('.post-selector');
+    elements.forEach((el, i) => {
+        console.log(`📝 Post ${i}:`, {
+            title: el.querySelector('.title')?.textContent,
+            content: el.querySelector('.content')?.textContent?.slice(0, 100)
+        });
+    });
+}
+
+// Run in target site console
+debugExtraction();
+```
+
+#### Error Tracking
+```javascript
+// Comprehensive error handling
+function handleError(error, context = '') {
+    const errorInfo = {
+        message: error.message,
+        stack: error.stack,
+        context,
+        timestamp: new Date().toISOString(),
+        url: window.location?.href
+    };
+    
+    console.error('❌ Extension Error:', errorInfo);
+    
+    // Store for later analysis
+    chrome.storage.local.get(['errors'], (result) => {
+        const errors = result.errors || [];
+        errors.push(errorInfo);
+        chrome.storage.local.set({ errors: errors.slice(-50) }); // Keep last 50 errors
+    });
+}
+```
+
+### 📋 Development Checklist
+
+#### Before Contributing
+- [ ] Read through the codebase and understand the architecture
+- [ ] Set up development environment and test the extension
+- [ ] Run existing tests to ensure everything works
+- [ ] Check JSDoc documentation standards in existing code
+
+#### For New Features
+- [ ] Add comprehensive JSDoc documentation
+- [ ] Include unit tests for new functionality
+- [ ] Update integration tests if workflow changes
+- [ ] Test across different platforms (Reddit, GitHub, etc.)
+- [ ] Update README.md with new feature documentation
+- [ ] Verify Chrome extension permissions if new APIs used
+
+#### For Bug Fixes
+- [ ] Identify root cause and add debugging logs
+- [ ] Create test case that reproduces the bug
+- [ ] Implement fix with error handling
+- [ ] Verify fix across affected platforms
+- [ ] Add regression test to prevent future issues
+
+### 🔐 Security Considerations
+
+#### API Key Management
+- Extension stores OpenAI API keys in local Chrome storage
+- For production: implement backend proxy to secure API keys
+- Keys are never transmitted except to OpenAI's API
+- Users can clear stored keys through extension options
+
+#### Data Privacy
+- All data extraction happens locally in the browser
+- No data is sent to external servers except OpenAI for analysis
+- Users control which platforms and data to extract
+- Extracted data is stored locally and can be deleted anytime
+
+#### Permissions Audit
+- `activeTab`: Required for content script injection
+- `storage`: Required for local data persistence
+- `tabs`: Required for multi-tab extraction workflow
+- `downloads`: Required for CSV/JSON export functionality
+- Host permissions: Limited to specific platforms for data extraction
+
+### 🤝 Community and Support
+
+#### Getting Help
+- **Issues**: Report bugs and feature requests on GitHub Issues
+- **Discussions**: Ask questions and share ideas in GitHub Discussions
+- **Documentation**: This README covers most development questions
+- **Code Examples**: Check existing content scripts for platform integration examples
+
+#### Contributing
+- **Fork and PR**: Standard GitHub workflow for contributions
+- **Code Review**: All changes go through peer review
+- **Testing**: Maintain test coverage for reliability
+- **Documentation**: Keep JSDoc and README updated
+
+#### Release Process
+1. **Version Bump**: Update version in `manifest.json`
+2. **Changelog**: Document changes in `CHANGELOG.md`
+3. **Testing**: Run full test suite and manual verification
+4. **Documentation**: Update README for any new features
+5. **Release**: Create GitHub release with packaged extension
 
 ## Security & Privacy
 

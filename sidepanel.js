@@ -1,6 +1,11 @@
-// Enhanced sidepanel script with modern interactions and improved UX
+/**
+ * @file sidepanel.js
+ * @description This script controls the main user interface of the extension's side panel.
+ * It manages the three main modes (Sources, Extraction, AI Analysis), handles user input,
+ * communicates with the background script to initiate tasks, and displays real-time progress and status updates.
+ */
 document.addEventListener('DOMContentLoaded', function () {
-    // Enhanced mode switching elements
+    // Mode switching elements
     const modeSwitcher = document.querySelector('.mode-switcher');
     const modeOptions = document.querySelectorAll('.mode-option');
     const sourcesMode = document.getElementById('sourcesMode');
@@ -107,7 +112,9 @@ document.addEventListener('DOMContentLoaded', function () {
     setupKeyboardShortcuts();
     setupSecurityWarning();
 
-    // Enhanced mode switching functionality
+    /**
+     * @description Sets up event listeners for the main mode switcher (Sources, Extraction, AI).
+     */
     function setupModeSwitching() {
         modeOptions.forEach((option, index) => {
             option.addEventListener('click', () => {
@@ -146,6 +153,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * @description Switches the visible content area and theme based on the selected mode.
+     * @param {string} mode - The mode to switch to ('sources', 'extraction', 'ai').
+     * @param {number} [index=null] - The index of the selected mode option.
+     */
     function switchMode(mode, index = null) {
         // Update current mode index
         if (index !== null) {
@@ -198,7 +210,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 150);
     }
 
-    // Sources mode setup
+    /**
+     * @description Sets up event listeners for the "Sources" mode UI elements.
+     */
     function setupSourcesMode() {
         // Setup source checkboxes
         Object.values(sourceCheckboxes).forEach(checkbox => {
@@ -208,7 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
         generateDorks.addEventListener('click', generateSearchQueries);
     }
 
-    // Extraction mode setup
+    /**
+     * @description Sets up event listeners for the "Extraction" mode UI elements.
+     */
     function setupExtractionMode() {
         csvFileInput.addEventListener('change', handleFileSelect);
         exportSearchResults.addEventListener('click', exportSearchResultsToCSV);
@@ -242,7 +258,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // AI mode setup
+    /**
+     * @description Sets up event listeners for the "AI Analysis" mode UI elements.
+     */
     function setupAIMode() {
         startAIAnalysis.addEventListener('click', startAIAnalysisProcess);
         viewResults.addEventListener('click', viewAnalysisResults);
@@ -270,7 +288,9 @@ document.addEventListener('DOMContentLoaded', function () {
         setupWeightControls();
     }
 
-    // Initialize sidepanel data
+    /**
+     * @description Initializes the side panel by setting up event listeners and loading initial state from storage.
+     */
     async function initializeSidepanel() {
         try {
             // Load stored data using new storage keys
@@ -325,7 +345,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Update selected sources count
+    /**
+     * @description Updates the count of selected sources displayed in the UI and stores the selection.
+     */
     function updateSelectedSourcesCount() {
         const selectedSources = [];
         Object.entries(sourceCheckboxes).forEach(([source, checkbox]) => {
@@ -340,7 +362,10 @@ document.addEventListener('DOMContentLoaded', function () {
         chrome.storage.local.set({ selectedSources });
     }
 
-    // Update sources stats
+    /**
+     * @description Updates the source checkboxes based on stored preferences.
+     * @param {Array<string>} sources - An array of selected source keys.
+     */
     function updateSourcesStats(sources) {
         // Update checkboxes based on stored preferences
         Object.entries(sourceCheckboxes).forEach(([source, checkbox]) => {
@@ -349,7 +374,9 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedSourcesCount.textContent = sources.length;
     }
 
-    // Generate search queries for selected sources
+    /**
+     * @description Initiates the AI-powered search query generation process.
+     */
     async function generateSearchQueries() {
         const topic = topicInput.value.trim();
         if (!topic) {
@@ -408,7 +435,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Update extraction status display
+    /**
+     * @description Updates the UI to reflect the current status of the data extraction process.
+     * @param {object} extraction - The extraction state object from storage.
+     */
     function updateExtractionStatus(extraction) {
         console.log('updateExtractionStatus called with:', extraction);
 
@@ -428,7 +458,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Export search results to CSV
+    /**
+     * @description Exports the collected search results to a CSV file.
+     */
     async function exportSearchResultsToCSV() {
         try {
             exportSearchResults.disabled = true;
@@ -467,7 +499,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Generate CSV content from results
+    /**
+     * @description Generates CSV-formatted string from an array of result objects.
+     * @param {Array<object>} results - The array of search result objects.
+     * @returns {string} The CSV content as a string.
+     */
     function generateCSV(results) {
         if (results.length === 0) return '';
 
@@ -519,7 +555,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return csvRows.join('\n');
     }
 
-    // Handle file selection (Extraction mode)
+    /**
+     * @description Handles the selection of a CSV file for URL extraction.
+     * @param {Event} event - The file input change event.
+     */
     function handleFileSelect(event) {
         const file = event.target.files[0];
         if (file && file.type === 'text/csv') {
@@ -549,7 +588,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Set up extraction mode with stored search results
+    /**
+     * @description Configures the extraction UI with URLs from previously stored search results.
+     * @param {Array<object>} searchResults - The search results from storage.
+     */
     function setupExtractionWithStoredResults(searchResults) {
         if (!searchResults || searchResults.length === 0) {
             return;
@@ -572,7 +614,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Flag to prevent repeated AI Analysis setup
     let aiAnalysisSetupComplete = false;
 
-    // Set up AI Analysis mode with extracted data
+    /**
+     * @description Configures the AI Analysis UI with previously extracted data.
+     * @param {Array<object>} extractedData - The array of extracted data items.
+     */
     function setupAIAnalysisWithExtractedData(extractedData) {
         if (!extractedData || extractedData.length === 0 || aiAnalysisSetupComplete) {
             return;
@@ -593,7 +638,9 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log(`Set up AI Analysis with ${extractedData.length} extracted items`);
     }
 
-    // Manual refresh function to check extraction status
+    /**
+     * @description Manually refreshes the extraction status from storage.
+     */
     async function refreshExtractionStatus() {
         try {
             const { extractionState } = await chrome.storage.local.get(['extractionState']);
@@ -612,7 +659,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Update extraction UI to show stored results
+    /**
+     * @description Updates the extraction UI to show details about stored search results.
+     * @param {Array<string>} urls - An array of URLs from the stored results.
+     * @param {Array<object>} searchResults - The full search result objects.
+     */
     function updateExtractionUIWithStoredResults(urls, searchResults) {
         // Update total URLs count
         totalUrls.textContent = urls.length;
@@ -650,7 +701,11 @@ document.addEventListener('DOMContentLoaded', function () {
         showExtractionStatus(`Ready to extract from ${urls.length} URLs found in search results`, 'success');
     }
 
-    // Extract URLs from CSV content
+    /**
+     * @description Extracts URLs from a CSV file content string.
+     * @param {string} csvContent - The content of the CSV file.
+     * @returns {Array<string>} An array of extracted URLs.
+     */
     function extractUrlsFromCSV(csvContent) {
         const lines = csvContent.split('\n');
         const urls = [];
@@ -670,7 +725,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return urls;
     }
 
-    // Get source breakdown from URLs
+    /**
+     * @description Gets a count of URLs per platform.
+     * @param {Array<string>} urls - An array of URLs.
+     * @returns {object} An object with platform names as keys and URL counts as values.
+     */
     function getSourceBreakdown(urls) {
         const breakdown = {};
         urls.forEach(url => {
@@ -689,7 +748,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return breakdown;
     }
 
-    // Start extraction process
+    /**
+     * @description Starts the data extraction process by sending a message to the background script.
+     */
     async function startExtractionProcess() {
         if (!window.selectedUrls || window.selectedUrls.length === 0) {
             showExtractionStatus('Please select a CSV file with URLs first', 'error');
@@ -730,7 +791,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Check extraction status
+    /**
+     * @description Checks the status of an ongoing extraction from storage.
+     */
     async function checkExtractionStatus() {
         try {
             const stored = await chrome.storage.local.get(['dataExtraction']);
@@ -747,18 +810,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show progress tracking
+    /**
+     * @description Shows the progress tracking UI for an ongoing extraction.
+     * @param {object} extraction - The extraction state object.
+     */
     function showProgressTracking(extraction) {
         extractionProgress.style.display = 'block';
         updateProgress(extraction);
     }
 
-    // Hide progress tracking
+    /**
+     * @description Hides the progress tracking UI.
+     */
     function hideProgressTracking() {
         extractionProgress.style.display = 'none';
     }
 
-    // Enhanced progress display with animations
+    /**
+     * @description Updates the progress bar UI with the current progress.
+     * @param {object} extraction - The extraction state object.
+     */
     function updateProgress(extraction) {
         const progress = extraction.progress || 0;
         const total = extraction.total || 0;
@@ -775,7 +846,9 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    // Stop extraction
+    /**
+     * @description Stops the ongoing data extraction process.
+     */
     async function stopExtractionProcess() {
         try {
             stopExtraction.disabled = true;
@@ -802,7 +875,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Update AI status display
+    /**
+     * @description Updates the UI to reflect the status of the AI analysis process.
+     * @param {object} analysis - The analysis state object.
+     * @param {Array<object>} perPostResults - The array of per-post analysis results.
+     * @param {object} aggregateResults - The aggregated analysis results.
+     */
     function updateAIStatus(analysis, perPostResults, aggregateResults) {
         // Handle undefined perPostResults
         const resultsCount = perPostResults ? perPostResults.length : 0;
@@ -819,7 +897,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Handle data source change
+    /**
+     * @description Handles the change event for the data source radio buttons in AI Analysis mode.
+     */
     function handleDataSourceChange() {
         const selectedSource = document.querySelector('input[name="dataSource"]:checked').value;
 
@@ -837,7 +917,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Handle JSON file selection
+    /**
+     * @description Handles the selection of a local JSON file for analysis.
+     * @param {Event} event - The file input change event.
+     */
     function handleJSONFileSelect(event) {
         const file = event.target.files[0];
         if (file && file.type === 'application/json') {
@@ -875,7 +958,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Handle report file selection
+    /**
+     * @description Handles the selection of a local report file to view.
+     * @param {Event} event - The file input change event.
+     */
     function handleReportFileSelect(event) {
         const file = event.target.files[0];
         if (file && file.type === 'application/json') {
@@ -907,7 +993,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Open report in analysis tab
+    /**
+     * @description Opens a selected local report file in the full analysis view.
+     */
     async function openReportInAnalysisTab() {
         if (!window.selectedReportData) {
             showAIStatus('Please select a report file first', 'error');
@@ -933,7 +1021,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Start AI analysis process
+    /**
+     * @description Starts the AI analysis process by sending data to the background script.
+     */
     async function startAIAnalysisProcess() {
         try {
             // Reset the AI Analysis setup flag for new analysis
@@ -1014,13 +1104,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show AI analysis progress
+    /**
+     * @description Shows the progress UI for an ongoing AI analysis.
+     * @param {object} analysis - The analysis state object.
+     */
     function showAIAnalysisProgress(analysis) {
         aiProgress.style.display = 'block';
         updateAIAnalysisProgress(analysis);
     }
 
-    // Enhanced AI analysis progress display
+    /**
+     * @description Updates the AI analysis progress bar UI.
+     * @param {object} analysis - The analysis state object.
+     */
     function updateAIAnalysisProgress(analysis) {
         const progress = analysis.progress || 0;
         const total = analysis.total || 0;
@@ -1037,7 +1133,10 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    // Show enhanced analysis results
+    /**
+     * @description Displays a summary of the analysis results in the side panel.
+     * @param {object} aggregateResults - The aggregated analysis data.
+     */
     function showAnalysisResults(aggregateResults) {
         analysisResults.style.display = 'block';
 
@@ -1061,7 +1160,9 @@ document.addEventListener('DOMContentLoaded', function () {
         actionPlanText.textContent = aggregateResults.short_action_plan || 'No action plan generated';
     }
 
-    // View analysis results
+    /**
+     * @description Opens the detailed analysis results in a new tab.
+     */
     function viewAnalysisResults() {
         try {
             // Open AI analysis in a new tab
@@ -1075,7 +1176,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Open report UI page
+    /**
+     * @description Opens the interactive report UI in a new tab.
+     */
     function openReportUIPage() {
         try {
             // Open report UI in a new tab
@@ -1089,7 +1192,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Export analysis results
+    /**
+     * @description Exports the analysis results to a file.
+     */
     async function exportAnalysisResults() {
         try {
             const { per_post_analysis, aggregated_analysis } = await chrome.storage.local.get(['per_post_analysis', 'aggregated_analysis']);
@@ -1139,7 +1244,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show export format dialog
+    /**
+     * @description Shows a dialog to the user to select an export format.
+     * @returns {Promise<string|null>} A promise that resolves to the selected format ('json' or 'markdown') or null if canceled.
+     */
     function showExportFormatDialog() {
         return new Promise((resolve) => {
             const dialog = document.createElement('div');
@@ -1193,7 +1301,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Generate Markdown report
+    /**
+     * @description Generates a Markdown-formatted report from the analysis data.
+     * @param {object} data - The full analysis data object.
+     * @returns {string} The generated Markdown string.
+     */
     function generateMarkdownReport(data) {
         const { aggregated_analysis, timestamp } = data;
         const date = new Date(timestamp).toLocaleDateString();
@@ -1256,7 +1368,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return markdown;
     }
 
-    // Show Google search progress
+    /**
+     * @description Shows the progress UI for an ongoing Google search.
+     * @param {number} totalQueries - The total number of queries to be executed.
+     */
     function showGoogleSearchProgress(totalQueries) {
         googleSearchProgress.style.display = 'block';
         googleProgressFill.style.width = '0%';
@@ -1265,7 +1380,12 @@ document.addEventListener('DOMContentLoaded', function () {
         googleCurrentQuery.textContent = 'Starting Google searches...';
     }
 
-    // Enhanced Google search progress tracking
+    /**
+     * @description Updates the Google search progress bar UI.
+     * @param {number} current - The number of queries completed.
+     * @param {number} total - The total number of queries.
+     * @param {string} currentQuery - The text of the query currently being executed.
+     */
     function updateGoogleSearchProgress(current, total, currentQuery) {
         const currentTask = currentQuery ? `Current: ${currentQuery}` : 'Processing...';
 
@@ -1280,24 +1400,50 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    // Hide Google search progress
+    /**
+     * @description Hides the Google search progress UI.
+     */
     function hideGoogleSearchProgress() {
         googleSearchProgress.style.display = 'none';
     }
 
-    // Enhanced status display functions with animations
+    /**
+     * @description Displays a status message in the Sources mode status element.
+     * @param {string} message - The message to display.
+     * @param {string} type - The type of message ('success', 'error', 'info').
+     * @param {number} [duration=3000] - How long to display the message.
+     */
     function showSourcesStatus(message, type, duration = 3000) {
         showStatus(sourcesStatus, message, type, duration);
     }
 
+    /**
+     * @description Displays a status message in the Extraction mode status element.
+     * @param {string} message - The message to display.
+     * @param {string} type - The type of message ('success', 'error', 'info').
+     * @param {number} [duration=5000] - How long to display the message.
+     */
     function showExtractionStatus(message, type, duration = 5000) {
         showStatus(extractionStatus, message, type, duration);
     }
 
+    /**
+     * @description Displays a status message in the AI Analysis mode status element.
+     * @param {string} message - The message to display.
+     * @param {string} type - The type of message ('success', 'error', 'info').
+     * @param {number} [duration=5000] - How long to display the message.
+     */
     function showAIStatus(message, type, duration = 5000) {
         showStatus(aiStatus, message, type, duration);
     }
 
+    /**
+     * @description Displays a status message to the user.
+     * @param {HTMLElement} statusElement - The element to display the status in.
+     * @param {string} message - The message text.
+     * @param {string} type - The type of message ('success', 'error', 'info').
+     * @param {number} duration - How long to display the message.
+     */
     function showStatus(statusElement, message, type, duration) {
         // Clear any existing timeout
         if (statusElement.timeoutId) {
@@ -1332,7 +1478,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }, duration);
     }
 
-    // Enhanced progress tracking with real-time updates
+    /**
+     * @description Updates a progress bar UI with animation.
+     * @param {HTMLElement} progressElement - The container for the progress bar.
+     * @param {HTMLElement} progressFill - The progress bar fill element.
+     * @param {HTMLElement} progressText - The element for text like "X / Y".
+     * @param {HTMLElement} progressPercent - The element for the percentage text.
+     * @param {number} current - The current progress value.
+     * @param {number} total - The total value.
+     * @param {string} [currentTask=null] - The text describing the current task.
+     */
     function updateProgressWithAnimation(progressElement, progressFill, progressText, progressPercent, current, total, currentTask = null) {
         const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
@@ -1359,19 +1514,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Show failed URLs notification
+    /**
+     * @description Shows a notification about failed URL extractions.
+     * @param {number} count - The number of failed URLs.
+     */
     function showFailedUrlsNotification(count) {
         const notification = document.createElement('div');
         notification.className = 'failed-urls-notification';
         notification.innerHTML = `
-            <div style="background: rgba(244, 67, 54, 0.15); border: 1px solid rgba(244, 67, 54, 0.4); 
+            <div style="background: rgba(244, 67, 54, 0.15); border: 1px solid rgba(244, 67, 54, 0.4);
                         padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 13px;">
                 <strong>⚠️ ${count} URLs failed to extract</strong>
-                <button onclick="this.parentElement.parentElement.remove()" 
+                <button onclick="this.parentElement.parentElement.remove()"
                         style="float: right; background: none; border: none; color: #f44336; cursor: pointer;">×</button>
                 <div style="margin-top: 8px;">
-                    <button onclick="downloadFailedUrlsReport()" 
-                            style="background: #f44336; color: white; border: none; padding: 4px 8px; 
+                    <button onclick="downloadFailedUrlsReport()"
+                            style="background: #f44336; color: white; border: none; padding: 4px 8px;
                                    border-radius: 4px; cursor: pointer; font-size: 12px;">
                         Download Report
                     </button>
@@ -1384,7 +1542,9 @@ document.addEventListener('DOMContentLoaded', function () {
         extractionStatus.parentNode.insertBefore(notification, extractionStatus.nextSibling);
     }
 
-    // Download failed URLs report
+    /**
+     * @description Initiates the download of the failed URLs report.
+     */
     async function downloadFailedUrlsReport() {
         try {
             await chrome.runtime.sendMessage({ type: 'SAVE_FAILED_URLS_REPORT' });
@@ -1395,7 +1555,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Listen for storage changes to update stats in real-time
+    /**
+     * @description Listens for storage changes to update the UI in real-time.
+     */
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local') {
             if (changes.selectedSources) {
@@ -1473,7 +1635,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Enhanced tooltip functionality
+    /**
+     * @description Sets up tooltips for elements with the `data-tooltip` attribute.
+     */
     function setupTooltips() {
         const tooltipElements = document.querySelectorAll('[data-tooltip]');
 
@@ -1483,6 +1647,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * @description Shows a tooltip for a given element.
+     * @param {MouseEvent} e - The mouseenter event.
+     */
     function showTooltip(e) {
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip-popup';
@@ -1513,6 +1681,10 @@ document.addEventListener('DOMContentLoaded', function () {
         e.target.tooltipElement = tooltip;
     }
 
+    /**
+     * @description Hides the tooltip for a given element.
+     * @param {MouseEvent} e - The mouseleave event.
+     */
     function hideTooltip(e) {
         if (e.target.tooltipElement) {
             e.target.tooltipElement.style.opacity = '0';
@@ -1525,7 +1697,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Enhanced keyboard shortcuts
+    /**
+     * @description Sets up keyboard shortcuts for the side panel.
+     */
     function setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
             // Only handle shortcuts when not in input fields
@@ -1553,7 +1727,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Enhanced error handling with user-friendly messages
+    /**
+     * @description A generic error handler for the side panel.
+     * @param {Error} error - The error object.
+     * @param {string} [context=''] - The context in which the error occurred.
+     */
     function handleError(error, context = '') {
         console.error(`Error in ${context}:`, error);
 
@@ -1578,7 +1756,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Setup analysis options controls
+    /**
+     * @description Sets up event listeners for the analysis options controls.
+     */
     function setupWeightControls() {
         const analysisDepthSelect = document.getElementById('analysisDepth');
         const focusAreaSelect = document.getElementById('focusArea');
@@ -1608,7 +1788,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Load analysis settings from storage
+    /**
+     * @description Loads analysis settings from storage and updates the UI controls.
+     */
     async function loadAnalysisSettings() {
         try {
             const { analysisSettings } = await chrome.storage.local.get(['analysisSettings']);
@@ -1628,7 +1810,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Save analysis settings to storage
+    /**
+     * @description Saves the current analysis settings to storage.
+     */
     async function saveAnalysisSettings() {
         try {
             const settings = {
@@ -1642,7 +1826,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Reset analysis settings to defaults
+    /**
+     * @description Resets the analysis settings to their default values.
+     */
     async function resetAnalysisSettings() {
         try {
             const analysisDepthSelect = document.getElementById('analysisDepth');
@@ -1667,7 +1853,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Continue from last analysis
+    /**
+     * @description Continues the AI analysis process from the last saved analysis run.
+     */
     async function continueFromLastAnalysisProcess() {
         try {
             const { lastAnalysisRun, aggregated_analysis } = await chrome.storage.local.get(['lastAnalysisRun', 'aggregated_analysis']);
@@ -1693,7 +1881,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Regenerate pitches
+    /**
+     * @description Regenerates solution pitches based on the last analysis results.
+     */
     async function regeneratePitchesProcess() {
         try {
             const { aggregated_analysis } = await chrome.storage.local.get(['aggregated_analysis']);
@@ -1740,7 +1930,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Regenerate final plan
+    /**
+     * @description Regenerates the final MVP plan based on the last generated pitches.
+     */
     async function regeneratePlanProcess() {
         try {
             const { lastGeneratedPitches, aggregated_analysis } = await chrome.storage.local.get(['lastGeneratedPitches', 'aggregated_analysis']);
@@ -1789,7 +1981,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Setup security warning
+    /**
+     * @description Sets up the dismissible security warning.
+     */
     function setupSecurityWarning() {
         const securityWarning = document.getElementById('securityWarning');
         const dismissBtn = document.getElementById('dismissSecurityWarning');
@@ -1808,7 +2002,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Add performance monitoring
+    /**
+     * @description Logs the duration of an operation to the console for performance monitoring.
+     * @param {string} operation - The name of the operation.
+     * @param {number} startTime - The start time of the operation, from `performance.now()`.
+     */
     function logPerformance(operation, startTime) {
         const duration = performance.now() - startTime;
         console.log(`${operation} completed in ${duration.toFixed(2)}ms`);
@@ -1869,9 +2067,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Start full automation
     async function startFullAutomation() {
         const topic = document.getElementById('autoTopic').value.trim();
-        const selectedPlatforms = Array.from(document.querySelectorAll('#autoPlatforms input[type="checkbox"]:checked'))
+        const selectedPlatforms = Array.from(document.querySelectorAll('.platform-checkboxes input[type="checkbox"]:checked'))
             .map(cb => cb.value);
         const analysisDepth = document.getElementById('autoAnalysisDepth').value;
+
+        console.log('Automation Debug:', {
+            topic,
+            selectedPlatforms,
+            analysisDepth,
+            checkboxes: document.querySelectorAll('.platform-checkboxes input[type="checkbox"]').length
+        });
+
 
         if (!topic) {
             alert('Please enter a research topic');
@@ -1904,18 +2110,38 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             // Step 1: Search Generation
             updateAutomationStep(1, 'Running', 'Generating search queries...');
-            const searchResponse = await chrome.runtime.sendMessage({
+            console.log('Sending search generation request:', {
                 action: 'generateSearchQueries',
                 topic: topic,
                 sources: selectedPlatforms
             });
+            
+            let searchResponse;
+            try {
+                searchResponse = await chrome.runtime.sendMessage({
+                    action: 'generateSearchQueries',
+                    topic: topic,
+                    sources: selectedPlatforms
+                });
+            } catch (error) {
+                console.error('Message sending failed, trying alternative:', error);
+                // Try alternative message format
+                searchResponse = await chrome.runtime.sendMessage({
+                    type: 'GENERATE_SEARCH_QUERIES',
+                    topic: topic,
+                    sources: selectedPlatforms
+                });
+            }
 
-            if (searchResponse.success) {
+            console.log('Search generation response:', searchResponse);
+
+            if (searchResponse && searchResponse.success) {
                 automationState.results.searchResults = searchResponse.results.length;
                 updateAutomationStep(1, 'Completed', `${searchResponse.results.length} results found`);
                 document.getElementById('autoSearchCount').textContent = searchResponse.results.length;
             } else {
-                throw new Error('Search generation failed');
+                console.error('Search generation failed:', searchResponse);
+                throw new Error(`Search generation failed: ${searchResponse?.error || 'Unknown error'}`);
             }
 
             // Step 2: Data Extraction

@@ -1,21 +1,53 @@
-/*
- * OpenAI client utilities for AI Demand Intelligence Miner
- * Handles Chat Completions API calls, structured outputs, retries, and validation
+/**
+ * @file openai.js
+ * @description This file contains client utilities for interacting with the OpenAI Chat Completions API.
+ * It handles API calls with structured JSON outputs, automatic retries with exponential backoff,
+ * response validation against a schema, and streaming support.
  */
 
+/**
+ * @const {string} OPENAI_ENDPOINT
+ * @description The URL for the OpenAI Chat Completions API.
+ */
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+/**
+ * @const {number} MAX_RETRIES
+ * @description The maximum number of times to retry a failed API request.
+ */
 const MAX_RETRIES = 5;
+/**
+ * @const {number} BASE_DELAY_MS
+ * @description The base delay in milliseconds for exponential backoff before retrying a request.
+ */
 const BASE_DELAY_MS = 500;
+/**
+ * @const {number} MAX_DELAY_MS
+ * @description The maximum delay in milliseconds between retries.
+ */
 const MAX_DELAY_MS = 4000;
 
+/**
+ * Generates a random jitter value to add to retry delays, preventing thundering herd issues.
+ * @param {number} [ms=200] - The maximum jitter value in milliseconds.
+ * @returns {number} A random integer between 0 and `ms`.
+ */
 function randomJitter(ms = 200) {
     return Math.floor(Math.random() * ms);
 }
 
+/**
+ * Creates a promise that resolves after a specified delay.
+ * @param {number} ms - The delay in milliseconds.
+ * @returns {Promise<void>} A promise that resolves after the delay.
+ */
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Retrieves the OpenAI API key from local storage.
+ * @returns {Promise<string|null>} A promise that resolves to the API key, or null if not found.
+ */
 async function getApiKey() {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['OPENAI_API_KEY'], (result) => {
@@ -28,7 +60,12 @@ async function getApiKey() {
     });
 }
 
-async function getModel(defaultModel = "gpt-4o-mini") {
+/**
+ * Retrieves the selected AI model from local storage, falling back to a default if not set.
+ * @param {string} [defaultModel="gpt-5"] - The default model to use if none is set in storage.
+ * @returns {Promise<string>} A promise that resolves to the selected AI model name.
+ */
+async function getModel(defaultModel = "gpt-5") {
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(['AI_MODEL'], (result) => {
             if (chrome.runtime.lastError) {
@@ -40,6 +77,20 @@ async function getModel(defaultModel = "gpt-4o-mini") {
     });
 }
 
+/**
+ * Makes a non-streaming call to the OpenAI Chat Completions API.
+ * Handles JSON mode, retries with exponential backoff, and schema validation.
+ * @param {object} params - The parameters for the API call.
+ * @param {string} params.system - The system prompt.
+ * @param {string} params.user - The user prompt.
+ * @param {string} [params.model] - The specific model to use.
+ * @param {object} [params.schema] - The JSON schema for the expected response (enables JSON mode).
+ * @param {number} [params.temperature=1] - The sampling temperature.
+ * @param {number} [params.maxRetries=MAX_RETRIES] - The maximum number of retries.
+ * @param {function} [params.onRetry=()=>{}] - A callback function for retry attempts.
+ * @param {object} [params.metadata={}] - Optional metadata (not sent to API, used for logging).
+ * @returns {Promise<object|string>} A promise that resolves to the parsed JSON object if a schema is provided, otherwise the raw text response.
+ */
 async function callOpenAI({
     system,
     user,
@@ -71,7 +122,7 @@ async function callOpenAI({
                 content: user
             }
         ],
-        stream: false // Set to true for streaming, but we'll handle this separately
+        stream: false
     };
 
     if (schema) {
@@ -146,6 +197,13 @@ async function callOpenAI({
     throw lastError || new Error("OpenAI call failed after retries");
 }
 
+/**
+ * Recursively validates a data object against a given JSON schema.
+ * @param {object} schema - The JSON schema to validate against.
+ * @param {*} data - The data to validate.
+ * @param {string} [path="root"] - The current path in the data structure, for error reporting.
+ * @returns {{valid: boolean, reason?: string}} An object indicating if the data is valid. If not, a reason is provided.
+ */
 function validateAgainstSchema(schema, data, path = "root") {
     if (!schema || typeof schema !== "object") {
         return { valid: true };
@@ -237,7 +295,21 @@ function validateAgainstSchema(schema, data, path = "root") {
     return { valid: true };
 }
 
-// Streaming OpenAI call for real-time analysis
+/**
+ * Makes a streaming call to the OpenAI Chat Completions API.
+ * Useful for real-time analysis and displaying results as they are generated.
+ * @param {object} params - The parameters for the streaming API call.
+ * @param {string} params.system - The system prompt.
+ * @param {string} params.user - The user prompt.
+ * @param {string} [params.model] - The specific model to use.
+ * @param {number} [params.temperature=1] - The sampling temperature.
+ * @param {number} [params.maxRetries=MAX_RETRIES] - The maximum number of retries.
+ * @param {function} [params.onChunk=()=>{}] - A callback function for each received chunk of data.
+ * @param {function} [params.onComplete=()=>{}] - A callback function when the stream is complete.
+ * @param {function} [params.onError=()=>{}] - A callback function for errors.
+ * @param {object} [params.metadata={}] - Optional metadata.
+ * @returns {Promise<string>} A promise that resolves to the full response string once complete.
+ */
 async function callOpenAIStream({
     system,
     user,
@@ -351,4 +423,3 @@ export {
     callOpenAIStream,
     validateAgainstSchema
 };
-

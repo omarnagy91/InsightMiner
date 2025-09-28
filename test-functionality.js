@@ -1,9 +1,17 @@
-// Test file to validate core functionality
-// This file can be used to test the extension's main features
+/**
+ * @file test-functionality.js
+ * @description This file contains a suite of high-level functionality tests for the extension.
+ * These tests are primarily for verification and debugging purposes, checking that key components
+ * and configurations are in place. They are not unit tests but rather sanity checks.
+ */
 
 console.log('Testing AI Demand Intelligence Miner functionality...');
 
-// Test 1: Check if all required elements exist in popup
+/**
+ * @function testPopupElements
+ * @description Checks if the main UI elements are present in the popup/side panel.
+ * Note: This is a placeholder test and would need to be run in the context of the extension's UI.
+ */
 function testPopupElements() {
     console.log('Testing popup elements...');
     
@@ -25,7 +33,10 @@ function testPopupElements() {
     console.log('Popup elements test completed');
 }
 
-// Test 2: Check if content scripts are properly configured
+/**
+ * @function testContentScripts
+ * @description Verifies that the content scripts are correctly configured in the manifest.
+ */
 function testContentScripts() {
     console.log('Testing content scripts...');
     
@@ -41,7 +52,11 @@ function testContentScripts() {
     console.log('Content scripts configured:', contentScripts);
 }
 
-// Test 3: Check if background script handles all message types
+/**
+ * @function testBackgroundMessageHandling
+ * @description Lists the expected message types that the background script should handle,
+ * serving as a reference for developers.
+ */
 function testBackgroundMessageHandling() {
     console.log('Testing background message handling...');
     
@@ -56,7 +71,10 @@ function testBackgroundMessageHandling() {
     console.log('Message types handled:', messageTypes);
 }
 
-// Test 4: Check if settings are properly configured
+/**
+ * @function testSettingsConfiguration
+ * @description Lists the key settings that should be configurable on the options page.
+ */
 function testSettingsConfiguration() {
     console.log('Testing settings configuration...');
     
@@ -71,7 +89,11 @@ function testSettingsConfiguration() {
     console.log('Settings configured:', settings);
 }
 
-// Test 5: Check if platform detection works
+/**
+ * @function testPlatformDetection
+ * @description Tests the `getPlatformFromUrl` helper function to ensure it correctly
+ * identifies platforms from various URL formats.
+ */
 function testPlatformDetection() {
     console.log('Testing platform detection...');
     
@@ -89,7 +111,12 @@ function testPlatformDetection() {
     });
 }
 
-// Helper function to determine platform from URL (copied from background.js)
+/**
+ * @function getPlatformFromUrl
+ * @description Determines the platform name from a given URL.
+ * @param {string} url - The URL to analyze.
+ * @returns {string} The platform name (e.g., 'reddit', 'github') or 'unknown'.
+ */
 function getPlatformFromUrl(url) {
     if (url.includes('reddit.com')) return 'reddit';
     if (url.includes('stackoverflow.com')) return 'stackoverflow';
@@ -99,7 +126,10 @@ function getPlatformFromUrl(url) {
     return 'unknown';
 }
 
-// Run all tests
+/**
+ * @function runAllTests
+ * @description Executes all the functionality tests in this file.
+ */
 function runAllTests() {
     console.log('=== AI Demand Intelligence Miner - Functionality Tests ===');
     
@@ -124,7 +154,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-// Run tests if this file is executed directly
+// Run tests if this file is executed directly in a Node.js environment
 if (typeof window === 'undefined') {
     runAllTests();
 }

@@ -1,8 +1,19 @@
-// Content script for Google search results extraction
+/**
+ * @file content-google.js
+ * @description This content script is injected into Google search result pages.
+ * It is responsible for extracting search result data (titles, URLs, snippets)
+ * from the DOM, handling various page layouts, and communicating the results
+ * back to the background script. It also provides on-page notifications to the user.
+ */
 (function () {
     'use strict';
 
-    // Function to extract search results from Google
+    /**
+     * Extracts search results from the Google search page by trying a series of CSS selectors.
+     * This approach makes the script resilient to frequent changes in Google's HTML structure.
+     * @returns {Array<object>} An array of extracted search result objects. Each object includes
+     * title, url, snippet, domain, position, searchQuery, timestamp, and source.
+     */
     function extractGoogleResults() {
         const results = [];
 
@@ -113,7 +124,11 @@
         return results;
     }
 
-    // Fallback extraction method for different Google layouts
+    /**
+     * A fallback extraction method that scrapes all external links from the page.
+     * This is used when the primary `extractGoogleResults` function fails to find structured results.
+     * @returns {Array<object>} An array of unique search result objects found via the fallback method.
+     */
     function extractGoogleResultsFallback() {
         const results = [];
         console.log('Trying fallback extraction method...');
@@ -172,13 +187,20 @@
         return uniqueResults;
     }
 
-    // Function to get current search query
+    /**
+     * Retrieves the current search query from the search input box on the page.
+     * @returns {string} The current search query.
+     */
     function getCurrentSearchQuery() {
         const searchInput = document.querySelector('input[name="q"]');
         return searchInput ? searchInput.value : '';
     }
 
-    // Function to save results to storage
+    /**
+     * Saves the extracted search results to `chrome.storage.local`.
+     * It appends the new results to any existing ones.
+     * @param {Array<object>} results - The array of new search result objects to save.
+     */
     async function saveResultsToStorage(results) {
         try {
             // Get existing results
@@ -205,7 +227,10 @@
         }
     }
 
-    // Function to extract and save results
+    /**
+     * Orchestrates the extraction and saving process. It waits for the page to load,
+     * calls the extraction function, and then saves the results. Includes a retry mechanism.
+     */
     async function extractAndSave() {
         // Wait a bit for dynamic content to load
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -233,7 +258,10 @@
         }
     }
 
-    // Function to show extraction notification
+    /**
+     * Displays a temporary notification on the page to inform the user about the extraction.
+     * @param {number} count - The number of results that were extracted.
+     */
     function showExtractionNotification(count) {
         // Create notification element
         const notification = document.createElement('div');
@@ -263,7 +291,10 @@
         }, 3000);
     }
 
-    // Listen for messages from popup
+    /**
+     * Listens for messages from the background script or popup.
+     * Handles the 'extract' action by initiating the extraction process.
+     */
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
             if (request.action === 'extract') {
@@ -272,27 +303,23 @@
                 // Wait a bit for dynamic content to load
                 setTimeout(async () => {
                     try {
-                        const results = extractGoogleResults();
+                        let results = extractGoogleResults();
                         console.log(`Extracted ${results.length} results from Google search`);
+
+                        if (results.length === 0) {
+                            console.log('No search results found with primary method, trying fallback...');
+                            results = extractGoogleResultsFallback();
+                        }
 
                         if (results.length > 0) {
                             await saveResultsToStorage(results);
                             showExtractionNotification(results.length);
-                            sendResponse({ success: true, results: results });
                         } else {
-                            console.log('No search results found with primary method, trying fallback...');
-
-                            // Try fallback extraction with different approach
-                            const fallbackResults = extractGoogleResultsFallback();
-                            if (fallbackResults.length > 0) {
-                                await saveResultsToStorage(fallbackResults);
-                                showExtractionNotification(fallbackResults.length);
-                                sendResponse({ success: true, results: fallbackResults });
-                            } else {
-                                console.log('No search results found with fallback method either');
-                                sendResponse({ success: true, results: [] });
-                            }
+                            console.log('No search results found with any method.');
                         }
+
+                        sendResponse({ success: true, results: results });
+
                     } catch (error) {
                         console.error('Error in extraction:', error);
                         sendResponse({ success: false, error: error.message });
@@ -307,7 +334,11 @@
         }
     });
 
-    // Set up MutationObserver to handle dynamic content loading
+    /**
+     * Sets up a MutationObserver to detect when search results are dynamically added to the page.
+     * This is important for single-page applications where content changes without a full page reload.
+     * @returns {MutationObserver} The configured observer instance.
+     */
     function setupMutationObserver() {
         const targetNode = document.body;
         const config = { childList: true, subtree: true };
@@ -331,7 +362,7 @@
         return observer;
     }
 
-    // Initialize observer when page loads
+    // Initialize observer when the script loads.
     let mutationObserver = null;
 
     if (document.readyState === 'loading') {
@@ -341,10 +372,6 @@
     } else {
         mutationObserver = setupMutationObserver();
     }
-
-    // Auto-extract when page loads (optional - can be disabled)
-    // Uncomment the line below if you want automatic extraction
-    // setTimeout(extractAndSave, 2000);
 
     console.log('Google Search Results Extractor loaded');
 })();

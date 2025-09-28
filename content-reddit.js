@@ -1,8 +1,18 @@
-// Content script for Reddit posts and comments extraction
+/**
+ * @file content-reddit.js
+ * @description This content script is injected into Reddit pages. It is responsible for
+ * extracting data from posts and comments, handling various Reddit layouts (old and new),
+ * and sending the extracted data back to the background script for processing and storage.
+ */
 (function () {
     'use strict';
 
-    // Function to extract Reddit posts
+    /**
+     * Extracts all visible Reddit posts on the current page.
+     * It uses a list of selectors to be resilient to changes in Reddit's DOM structure.
+     * @returns {Array<object>} An array of post objects, each containing details like title,
+     * content, author, score, etc.
+     */
     function extractRedditPosts() {
         const posts = [];
 
@@ -165,7 +175,11 @@
         return posts;
     }
 
-    // Function to extract Reddit comments
+    /**
+     * Extracts all visible comments on the current Reddit page.
+     * It uses a list of selectors to handle different Reddit DOM structures.
+     * @returns {Array<object>} An array of comment objects, each with content, author, score, etc.
+     */
     function extractRedditComments() {
         const comments = [];
 
@@ -277,7 +291,12 @@
         return comments;
     }
 
-    // Function to save results to storage
+    /**
+     * Saves the extracted posts and comments to `chrome.storage.local`.
+     * It appends the new data to any existing search results.
+     * @param {Array<object>} posts - An array of extracted post objects.
+     * @param {Array<object>} comments - An array of extracted comment objects.
+     */
     async function saveResultsToStorage(posts, comments) {
         try {
             // Get existing results
@@ -304,7 +323,9 @@
         }
     }
 
-    // Function to extract and save results
+    /**
+     * Orchestrates the extraction and saving process for Reddit content.
+     */
     async function extractAndSave() {
         const posts = extractRedditPosts();
         const comments = extractRedditComments();
@@ -319,7 +340,12 @@
         }
     }
 
-    // Function to extract Reddit data for background script
+    /**
+     * Extracts data from the current Reddit page, including the main post and its comments.
+     * This function is typically called by the background script.
+     * @param {boolean} [extractComments=true] - Whether to extract comments along with the post.
+     * @returns {Promise<object>} A promise that resolves to an object containing the extracted post and comments.
+     */
     async function extractRedditData(extractComments = true) {
         const post = extractSingleRedditPost();
         const comments = extractComments ? extractRedditComments() : [];
@@ -336,7 +362,10 @@
         };
     }
 
-    // Function to extract a single Reddit post
+    /**
+     * Extracts the data for the single main post on the current page.
+     * @returns {object|null} The extracted post object, or null if no post is found.
+     */
     function extractSingleRedditPost() {
         try {
             // Try to find the main post content using new Reddit selectors
@@ -542,7 +571,11 @@
         }
     }
 
-    // Function to show extraction notification
+    /**
+     * Displays a temporary notification on the page to inform the user about the extraction success.
+     * @param {number} postCount - The number of posts extracted.
+     * @param {number} commentCount - The number of comments extracted.
+     */
     function showExtractionNotification(postCount, commentCount) {
         const notification = document.createElement('div');
         notification.style.cssText = `
@@ -570,7 +603,11 @@
         }, 3000);
     }
 
-    // Listen for messages from popup and background script
+    /**
+     * Listens for messages from the background script or popup.
+     * Handles the 'extract' action to scrape all content on the page,
+     * and the 'extractRedditData' action to scrape a single post and its comments.
+     */
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
             if (request.action === 'extract') {
