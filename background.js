@@ -621,9 +621,21 @@ async function executeGoogleSearches(queries) {
             });
 
             const tab = await chrome.tabs.create({ url: searchUrl, active: false });
-            await new Promise(resolve => setTimeout(resolve, 3500));
+            await new Promise(resolve => setTimeout(resolve, 4000)); // Increased wait time
 
             try {
+                // Ensure content script is injected
+                try {
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        files: ['content-google.js']
+                    });
+                    console.log(`Content script injected for ${query.platform} page ${page + 1}`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for script to load
+                } catch (injectError) {
+                    console.log(`Content script injection failed for ${query.platform} page ${page + 1}:`, injectError.message);
+                }
+
                 const extraction = await chrome.tabs.sendMessage(tab.id, {
                     action: 'extract',
                     searchQuery: query.query,
@@ -652,6 +664,37 @@ async function executeGoogleSearches(queries) {
                 }
             } catch (error) {
                 console.error(`Search extraction failed for ${query.platform} page ${page + 1}:`, error);
+
+                // Try fallback extraction if connection failed
+                if (error.message.includes('Could not establish connection')) {
+                    try {
+                        console.log(`Attempting fallback extraction for ${query.platform} page ${page + 1}`);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+
+                        const fallbackExtraction = await chrome.tabs.sendMessage(tab.id, {
+                            action: 'extract',
+                            searchQuery: query.query,
+                            platform: query.platform,
+                            page: page + 1
+                        });
+
+                        if (fallbackExtraction?.success && Array.isArray(fallbackExtraction.results)) {
+                            const decorated = fallbackExtraction.results.map(result => ({
+                                ...result,
+                                platform: query.platform,
+                                platformLabel: query.platformLabel,
+                                topic: query.topic,
+                                query: query.query,
+                                page: page + 1,
+                                timestamp: new Date().toISOString()
+                            }));
+                            results.push(...decorated);
+                            console.log(`Fallback successful: extracted ${fallbackExtraction.results.length} results from page ${page + 1} of ${query.platform}`);
+                        }
+                    } catch (fallbackError) {
+                        console.error(`Fallback extraction also failed for ${query.platform} page ${page + 1}:`, fallbackError.message);
+                    }
+                }
             }
 
             try {
@@ -703,6 +746,280 @@ function getPlatformDisplayName(source) {
     };
     return names[source] || source;
 }
+
+// ---- Automation Functions ----
+
+// Handle data extraction for automation
+async function handleDataExtraction(urls) {
+    console.log('Starting data extraction for automation with', urls.length, 'URLs');
+
+    // Set up extraction state
+    await chrome.storage.local.set({
+        [STORAGE_KEYS.extractionState]: {
+            isRunning: true,
+            progress: 0,
+            total: urls.length,
+            currentTask: 'Starting extraction...',
+            extractedData: [],
+            completed: false
+        }
+    });
+
+    const extractedData = [];
+    const failedUrls = [];
+
+    for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        try {
+            console.log(`Extracting data from ${i + 1}/${urls.length}: ${url}`);
+
+            // Update progress
+            await chrome.storage.local.set({
+                [STORAGE_KEYS.extractionState]: {
+                    isRunning: true,
+                    progress: i + 1,
+                    total: urls.length,
+                    currentTask: `Extracting from ${url}`,
+                    extractedData: [...extractedData],
+                    completed: false
+                }
+            });
+
+            // Extract data from URL
+            const result = await extractDataFromUrl(url);
+            if (result && result.success) {
+                extractedData.push(result.data);
+            } else {
+                failedUrls.push(url);
+            }
+        } catch (error) {
+            console.error(`Failed to extract from ${url}:`, error);
+            failedUrls.push(url);
+        }
+    }
+
+    // Mark extraction as completed
+    await chrome.storage.local.set({
+        [STORAGE_KEYS.extractionState]: {
+            isRunning: false,
+            progress: urls.length,
+            total: urls.length,
+            currentTask: 'Extraction completed',
+            extractedData: extractedData,
+            completed: true
+        }
+    });
+
+    return { extractedData, failedUrls };
+}
+
+// Handle AI analysis for automation
+async function handleAIAnalysis(dataSource, analysisDepth) {
+    console.log('Starting AI analysis for automation');
+
+    // Get extracted data
+    const { extractionState } = await chrome.storage.local.get([STORAGE_KEYS.extractionState]);
+    if (!extractionState || !extractionState.extractedData) {
+        throw new Error('No extracted data available for analysis');
+    }
+
+    const posts = extractionState.extractedData;
+
+    // Set up analysis state
+    await chrome.storage.local.set({
+        [STORAGE_KEYS.analysisState]: {
+            isRunning: true,
+            progress: 0,
+            total: posts.length,
+            perPostResults: [],
+            aggregateResults: null
+        }
+    });
+
+    // Run analysis
+    const run = await analyzePosts({
+        posts,
+        schema: PER_POST_SCHEMA,
+        buildPrompt: buildPerPostPrompt,
+        weights: DEMAND_SCORING_DEFAULTS,
+        onProgress: async (progress) => {
+            await chrome.storage.local.set({
+                [STORAGE_KEYS.analysisState]: {
+                    isRunning: true,
+                    progress: progress.current,
+                    total: progress.total,
+                    perPostResults: [],
+                    aggregateResults: null
+                }
+            });
+        }
+    });
+
+    return run;
+}
+
+// Generate report for automation
+async function generateReport() {
+    console.log('Generating report for automation');
+
+    // Get analysis results
+    const { analysisState } = await chrome.storage.local.get([STORAGE_KEYS.analysisState]);
+    if (!analysisState || !analysisState.aggregateResults) {
+        throw new Error('No analysis results available for report generation');
+    }
+
+    // Create report data
+    const reportData = {
+        timestamp: new Date().toISOString(),
+        summary: {
+            totalInsights: Object.values(analysisState.aggregateResults).reduce((sum, arr) => sum + arr.length, 0),
+            categories: Object.keys(analysisState.aggregateResults).map(category => ({
+                name: category,
+                count: analysisState.aggregateResults[category].length
+            }))
+        },
+        insights: analysisState.aggregateResults,
+        metadata: {
+            generatedBy: 'InsightMiner Automation',
+            version: '2.1.0'
+        }
+    };
+
+    // Store report
+    await chrome.storage.local.set({
+        [STORAGE_KEYS.reportRuns]: reportData
+    });
+
+    return 'report_generated';
+}
+
+// Download reports for automation
+async function downloadReports() {
+    console.log('Downloading reports for automation');
+
+    const downloads = [];
+
+    try {
+        // Get all data for export
+        const { searchResults, extractionState, analysisState } = await chrome.storage.local.get([
+            STORAGE_KEYS.searchResults,
+            STORAGE_KEYS.extractionState,
+            STORAGE_KEYS.analysisState
+        ]);
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+        // Download search results
+        if (searchResults && searchResults.length > 0) {
+            const searchData = {
+                timestamp,
+                type: 'search_results',
+                data: searchResults
+            };
+
+            const searchBlob = new Blob([JSON.stringify(searchData, null, 2)], { type: 'application/json' });
+            const searchUrl = URL.createObjectURL(searchBlob);
+
+            await chrome.downloads.download({
+                url: searchUrl,
+                filename: `insightminer_search_${timestamp}.json`,
+                saveAs: false
+            });
+
+            downloads.push('search_results.json');
+        }
+
+        // Download extracted data
+        if (extractionState && extractionState.extractedData && extractionState.extractedData.length > 0) {
+            const extractData = {
+                timestamp,
+                type: 'extracted_data',
+                data: extractionState.extractedData
+            };
+
+            const extractBlob = new Blob([JSON.stringify(extractData, null, 2)], { type: 'application/json' });
+            const extractUrl = URL.createObjectURL(extractBlob);
+
+            await chrome.downloads.download({
+                url: extractUrl,
+                filename: `insightminer_extracted_${timestamp}.json`,
+                saveAs: false
+            });
+
+            downloads.push('extracted_data.json');
+        }
+
+        // Download analysis results
+        if (analysisState && analysisState.aggregateResults) {
+            const analysisData = {
+                timestamp,
+                type: 'analysis_results',
+                data: analysisState.aggregateResults
+            };
+
+            const analysisBlob = new Blob([JSON.stringify(analysisData, null, 2)], { type: 'application/json' });
+            const analysisUrl = URL.createObjectURL(analysisBlob);
+
+            await chrome.downloads.download({
+                url: analysisUrl,
+                filename: `insightminer_analysis_${timestamp}.json`,
+                saveAs: false
+            });
+
+            downloads.push('analysis_results.json');
+        }
+
+        return downloads;
+    } catch (error) {
+        console.error('Error downloading reports:', error);
+        throw error;
+    }
+}
+
+// Extract data from a single URL
+async function extractDataFromUrl(url) {
+    try {
+        // Create a new tab for extraction
+        const tab = await chrome.tabs.create({ url, active: false });
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for page load
+
+        // Determine platform and send appropriate message
+        let platform = 'generic';
+        if (url.includes('reddit.com')) platform = 'reddit';
+        else if (url.includes('stackoverflow.com')) platform = 'stackoverflow';
+        else if (url.includes('github.com')) platform = 'github';
+        else if (url.includes('dev.to')) platform = 'devto';
+        else if (url.includes('medium.com')) platform = 'medium';
+
+        const extraction = await chrome.tabs.sendMessage(tab.id, {
+            action: 'extract',
+            platform: platform,
+            url: url
+        });
+
+        // Close the tab
+        await chrome.tabs.remove(tab.id);
+
+        if (extraction && extraction.success) {
+            return {
+                success: true,
+                data: {
+                    url: url,
+                    platform: platform,
+                    post: extraction.post || {},
+                    comments: extraction.comments || []
+                }
+            };
+        } else {
+            return { success: false, error: 'Extraction failed' };
+        }
+    } catch (error) {
+        console.error(`Error extracting from ${url}:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ---- Message handling ----
 
 /**
  * Main message listener for the extension.

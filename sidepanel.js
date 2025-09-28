@@ -2078,6 +2078,7 @@ document.addEventListener('DOMContentLoaded', function () {
             checkboxes: document.querySelectorAll('.platform-checkboxes input[type="checkbox"]').length
         });
 
+
         if (!topic) {
             alert('Please enter a research topic');
             return;
@@ -2114,7 +2115,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 topic: topic,
                 sources: selectedPlatforms
             });
-
+            
             let searchResponse;
             try {
                 searchResponse = await chrome.runtime.sendMessage({
