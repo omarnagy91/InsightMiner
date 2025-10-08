@@ -355,7 +355,7 @@ The background script is organized into focused modules:
 
 1. **Clone Repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/omarnagy91/InsightMiner
    cd chrome-extractor
    ```
 
